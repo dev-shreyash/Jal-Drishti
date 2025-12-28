@@ -1,15 +1,141 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+// server/prisma/schema.prisma
 
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
-  //url      = env("DATABASE_URL")
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// 1. LOCATION & VILLAGE
+// ============================================
+model Village {
+  village_id     Int      @id @default(autoincrement())
+  village_name   String
+  taluka         String
+  district       String
+  state          String
+  pincode        String
+  population     Int?
+  created_at     DateTime @default(now())
+
+  admins         Admin[]
+  operators      Operator[]
+  pumps          Pump[]
+  tanks          Tank[]
+}
+
+// ============================================
+// 2. ACTORS
+// ============================================
+model Admin {
+  admin_id       Int      @id @default(autoincrement())
+  name           String
+  username       String   @unique
+  password_hash  String
+  email          String?
+  contact_number String?
+  village_id     Int
+  village        Village  @relation(fields: [village_id], references: [village_id])
+  created_at     DateTime @default(now())
+}
+
+model Operator {
+  operator_id    Int      @id @default(autoincrement())
+  name           String
+  phone          String
+  username       String   @unique
+  password_hash  String
+  is_active      Boolean  @default(true)
+  village_id     Int
+  village        Village  @relation(fields: [village_id], references: [village_id])
+  created_at     DateTime @default(now())
+  logs           DailyLog[] 
+}
+
+// ============================================
+// 3. ASSETS
+// ============================================
+model Pump {
+  pump_id           Int      @id @default(autoincrement())
+  pump_name         String
+  model_number      String?
+  installation_date DateTime?
+  last_maintained   DateTime?
+  qr_code           String   @unique
+  latitude          Float
+  longitude         Float
+  flow_rate_lph     Int
+  is_smart_pump     Boolean  @default(false)
+  village_id        Int
+  village           Village  @relation(fields: [village_id], references: [village_id])
+  logs              DailyLog[]
+  sensor_readings   SensorLog[]
+  predictions       Prediction[]
+}
+
+model Tank {
+  tank_id           Int      @id @default(autoincrement())
+  tank_name         String
+  capacity_liters   Int
+  material_type     String?
+  last_cleaned_date DateTime?
+  latitude          Float?
+  longitude         Float?
+  is_smart_tank     Boolean  @default(false)
+  village_id        Int
+  village           Village  @relation(fields: [village_id], references: [village_id])
+  sensor_readings   SensorLog[] 
+}
+
+// ============================================
+// 4. MANUAL LOGS
+// ============================================
+model DailyLog {
+  log_id         Int      @id @default(autoincrement())
+  start_time     DateTime
+  end_time       DateTime
+  usage_liters   Float
+  gps_lat        Float
+  gps_lng        Float
+  photo_url      String?
+  chlorine_added Boolean  @default(false)
+  chlorine_ppm   Float?
+  created_at     DateTime @default(now())
+  operator_id    Int
+  operator       Operator @relation(fields: [operator_id], references: [operator_id])
+  pump_id        Int
+  pump           Pump     @relation(fields: [pump_id], references: [pump_id])
+}
+
+// ============================================
+// 5. AUTOMATIC LOGS
+// ============================================
+model SensorLog {
+  sensor_id      Int      @id @default(autoincrement())
+  timestamp      DateTime @default(now())
+  reading_type   String
+  value          Float
+  unit           String
+  pump_id        Int?
+  pump           Pump?    @relation(fields: [pump_id], references: [pump_id])
+  tank_id        Int?
+  tank           Tank?    @relation(fields: [tank_id], references: [tank_id])
+}
+
+// ============================================
+// 6. ANALYTICS
+// ============================================
+model Prediction {
+  prediction_id    Int      @id @default(autoincrement())
+  prediction_date  DateTime
+  predicted_usage  Float
+  shortage_flag    Boolean
+  confidence_score Float?
+  created_at       DateTime @default(now())
+  pump_id          Int
+  pump             Pump     @relation(fields: [pump_id], references: [pump_id])
 }
