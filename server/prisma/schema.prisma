@@ -22,14 +22,17 @@ model Village {
   population     Int?
   created_at     DateTime @default(now())
 
+  // Relationships
   admins         Admin[]
   operators      Operator[]
+  residents      Resident[]     // Added: Link to Residents
   pumps          Pump[]
   tanks          Tank[]
+  announcements  Announcement[] // Added: Link to Announcements
 }
 
 // ============================================
-// 2. ACTORS
+// 2. ACTORS (Admin & Operator)
 // ============================================
 model Admin {
   admin_id       Int      @id @default(autoincrement())
@@ -57,7 +60,7 @@ model Operator {
 }
 
 // ============================================
-// 3. ASSETS
+// 3. ASSETS (Pumps & Tanks)
 // ============================================
 model Pump {
   pump_id           Int      @id @default(autoincrement())
@@ -75,6 +78,7 @@ model Pump {
   logs              DailyLog[]
   sensor_readings   SensorLog[]
   predictions       Prediction[]
+  complaints        Complaint[] // Added: Complaints can optionally link to a specific pump
 }
 
 model Tank {
@@ -138,4 +142,49 @@ model Prediction {
   created_at       DateTime @default(now())
   pump_id          Int
   pump             Pump     @relation(fields: [pump_id], references: [pump_id])
+}
+
+// ============================================
+// 7. CONSUMER / RESIDENT GOVERNANCE (NEW)
+// ============================================
+model Resident {
+  resident_id   Int      @id @default(autoincrement())
+  name          String
+  phone         String   @unique  // Used as Username for login
+  password_hash String
+  address       String?  // e.g., "House No. 42, Ward 3"
+  
+  village_id    Int
+  village       Village  @relation(fields: [village_id], references: [village_id])
+  
+  complaints    Complaint[]
+  created_at    DateTime @default(now())
+}
+
+model Complaint {
+  complaint_id  Int      @id @default(autoincrement())
+  category      String   // "No Water", "Dirty Water", "Leakage", "Billing"
+  description   String
+  photo_url     String?
+  status        String   @default("OPEN") // OPEN, IN_PROGRESS, RESOLVED
+  
+  created_at    DateTime @default(now())
+  resolved_at   DateTime?
+  
+  resident_id   Int
+  resident      Resident @relation(fields: [resident_id], references: [resident_id])
+  
+  // Optional: Link to specific asset if the user knows which pump is broken
+  pump_id       Int?
+  pump          Pump?    @relation(fields: [pump_id], references: [pump_id])
+}
+
+model Announcement {
+  id            Int      @id @default(autoincrement())
+  title         String   // e.g., "Water Cut on Sunday"
+  message       String
+  date_posted   DateTime @default(now())
+  
+  village_id    Int
+  village       Village  @relation(fields: [village_id], references: [village_id])
 }
