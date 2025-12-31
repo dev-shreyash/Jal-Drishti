@@ -22,28 +22,19 @@ export const operatorLogin = async (c: Context) => {
     });
 
     if (!operator) {
-      return c.json(
-        { success: false, message: "Operator not found" },
-        404
-      );
+      return c.json({ success: false, message: "Operator not found" }, 404);
     }
 
-    const valid = await bcrypt.compare(
-      password,
-      operator.password_hash
-    );
+    const valid = await bcrypt.compare(password, operator.password_hash);
 
     if (!valid) {
-      return c.json(
-        { success: false, message: "Invalid password" },
-        401
-      );
+      return c.json({ success: false, message: "Invalid password" }, 401);
     }
 
-   
     const token = signJwt({
       operator_id: operator.operator_id,
       role: "OPERATOR",
+      village_id: operator.village_id,
     });
 
     return c.json({
@@ -57,9 +48,6 @@ export const operatorLogin = async (c: Context) => {
     });
   } catch (err) {
     console.error(err);
-    return c.json(
-      { success: false, message: "Login failed" },
-      500
-    );
+    return c.json({ success: false, message: "Login failed" }, 500);
   }
 };

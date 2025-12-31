@@ -13,10 +13,10 @@ export const operatorAuthMiddleware = async (c: Context, next: Next) => {
 
   try {
     const token = authHeader.split(" ")[1];
-
     const decoded = verifyJwt(token) as {
       operator_id: number;
       role: string;
+      village_id: number;
     };
 
     if (decoded.role !== "OPERATOR") {
@@ -26,11 +26,14 @@ export const operatorAuthMiddleware = async (c: Context, next: Next) => {
       );
     }
 
-    // ✅ THIS LINE FIXES EVERYTHING
-    c.set("operatorId", decoded.operator_id);
+  
+    c.set("operator", {
+      operator_id: decoded.operator_id,
+      village_id: decoded.village_id,
+    });
 
     await next();
-  } catch {
+  } catch (err) {
     return c.json(
       { success: false, message: "Invalid or expired token" },
       401
