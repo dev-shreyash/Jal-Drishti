@@ -212,9 +212,4 @@ Server runs on <b>http://localhost:4000</b> by default.
 - [Bun](https://bun.sh/) or Node.js
 - [JWT](https://jwt.io/) for authentication
 
----
-
-## 📄 License
-
-MIT
 
