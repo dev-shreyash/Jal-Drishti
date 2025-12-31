@@ -1,35 +1,3 @@
-<<<<<<< HEAD
-import { PrismaClient } from "@prisma/client";
-import bcrypt from "bcryptjs";
-
-const prisma = new PrismaClient();
-
-async function main() {
-  // Create village
-  const village = await prisma.village.create({
-    data: {
-      village_name: "Demo Village",
-      taluka: "Demo Taluka",
-      district: "Demo District",
-      state: "Maharashtra",
-      pincode: "411001",
-    },
-  });
-
-  // Create admin
-  const passwordHash = await bcrypt.hash("admin123", 10);
-
-  await prisma.admin.create({
-    data: {
-      name: "Main Admin",
-      username: "admin",
-      password_hash: passwordHash,
-      village_id: village.village_id,
-    },
-  });
-
-  console.log("✅ Seed completed: Admin + Village created");
-=======
 // server/prisma/seed.ts
 //Dummy DATA for initial testing and development
 import { PrismaClient } from '@prisma/client'
@@ -103,23 +71,13 @@ async function main() {
   console.log('✅ Tank Created')
 
   console.log('🏁 Seeding finished.')
->>>>>>> a4f14ae3ef3f512f89ffbbb08ec456ae719bc6b1
 }
 
 main()
   .catch((e) => {
-<<<<<<< HEAD
-    console.error("❌ Seed error:", e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
-=======
     console.error(e)
     process.exit(1)
   })
   .finally(async () => {
     await prisma.$disconnect()
   })
->>>>>>> a4f14ae3ef3f512f89ffbbb08ec456ae719bc6b1
