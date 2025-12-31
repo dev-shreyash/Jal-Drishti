@@ -4,23 +4,14 @@
     "dev": "bun --hot src/index.ts"
   },
   "dependencies": {
-<<<<<<< HEAD
-    "@prisma/client": "^5.22.0",
-    "bcryptjs": "^3.0.3",
     "hono": "^4.11.1",
-    "prisma": "^5.22.0"
-=======
-    "hono": "^4.11.1"
->>>>>>> a4f14ae3ef3f512f89ffbbb08ec456ae719bc6b1
+    "@prisma/client": "^5.22.0",
+    "bcryptjs": "^3.0.3"
   },
   "devDependencies": {
-    "@prisma/client": "5.22.0",
     "@types/bun": "latest",
-<<<<<<< HEAD
-=======
+    "prisma": "^5.22.0",
     "dotenv": "^17.2.3",
-    "prisma": "5.22.0",
->>>>>>> a4f14ae3ef3f512f89ffbbb08ec456ae719bc6b1
     "tsx": "^4.21.0"
   }
 }
