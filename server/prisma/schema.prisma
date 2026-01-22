@@ -29,6 +29,7 @@ model Village {
   pumps          Pump[]
   tanks          Tank[]
   announcements  Announcement[] // Added: Link to Announcements
+  ai_models AiModel[]
 }
 
 // ============================================
@@ -57,6 +58,7 @@ model Operator {
   village        Village  @relation(fields: [village_id], references: [village_id])
   created_at     DateTime @default(now())
   logs           DailyLog[] 
+  change_requests ChangeRequest[]
 }
 
 // ============================================
@@ -79,6 +81,7 @@ model Pump {
   sensor_readings   SensorLog[]
   predictions       Prediction[]
   complaints        Complaint[] // Added: Complaints can optionally link to a specific pump
+  change_requests   ChangeRequest[]
 }
 
 model Tank {
@@ -113,6 +116,8 @@ model DailyLog {
   operator       Operator @relation(fields: [operator_id], references: [operator_id])
   pump_id        Int
   pump           Pump     @relation(fields: [pump_id], references: [pump_id])
+  @@index([start_time])          // Faster date range searches
+  @@index([pump_id, start_time]) // Super fast graphing queries
 }
 
 // ============================================
@@ -187,4 +192,53 @@ model Announcement {
   
   village_id    Int
   village       Village  @relation(fields: [village_id], references: [village_id])
+}
+
+// ============================================
+// 8. AI & MACHINE LEARNING STORAGE
+// ============================================
+model AiModel {
+  model_id       Int      @id @default(autoincrement())
+  trained_at     DateTime @default(now())
+ algorithm     String   @default("ARIMA")
+  
+  // Stores { p, d, q, rmse }
+  model_weights Json
+  
+  village_id    Int
+  village       Village  @relation(fields: [village_id], references: [village_id])
+}
+
+
+model ChangeRequest {
+  request_id      Int      @id @default(autoincrement())
+  request_type    String   // "CREATE", "UPDATE", "DELETE"
+  status          String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  
+  // Who and What
+  operator_id     Int
+  operator        Operator @relation(fields: [operator_id], references: [operator_id])
+  
+  pump_id         Int?     // Nullable because "CREATE" requests don't have a Pump ID yet
+  pump            Pump?    @relation(fields: [pump_id], references: [pump_id])
+
+  // =========================================================
+  // EXPLICIT PAYLOAD FIELDS (Mirroring the Pump Model)
+  // =========================================================
+  // These store the "Proposed New Values". 
+  // They are nullable (?) so we only fill what is changing.
+  
+  req_pump_name    String?
+  req_model_number String?
+  req_latitude     Float?
+  req_longitude    Float?
+  req_flow_rate    Int?
+  req_is_smart     Boolean?
+
+  // Metadata
+  reason           String?  // e.g., "Old pump rusted out"
+  admin_remark     String?  // e.g., "Approved, good catch"
+  
+  created_at       DateTime @default(now())
+  resolved_at      DateTime?
 }
