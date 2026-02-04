@@ -1,8 +1,16 @@
 import { Hono } from "hono";
-import { login } from "../controllers/auth.controller";
+import { adminLogin, createAnnouncement } from "../controllers/auth.controller";
+import { addPump } from "../controllers/pump.controller";
+import { adminAuth } from "../middleware/auth.middleware";
+import { addTank, getAllTanks } from "../controllers/tank.controller";
+
 
 const authRoutes = new Hono();
 
-authRoutes.post("/login", login);
+authRoutes.post("/admin/login", adminLogin);
+authRoutes.post("/admin/addpumps", adminAuth, addPump);
+authRoutes.post("/admin/addtanks", adminAuth, addTank);
+authRoutes.get("/admin/alltanks", adminAuth,getAllTanks );
+authRoutes.post('/admin/announce', adminAuth, createAnnouncement);
 
 export default authRoutes;
