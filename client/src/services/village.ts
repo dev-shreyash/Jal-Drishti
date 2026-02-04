@@ -5,6 +5,7 @@ export const getVillages = async () => {
   return res.data;
 };
 
+
 export const addVillage = async (data: any) => {
   const res = await api.post("/admin/villages", data);
   return res.data;

@@ -1,161 +1,115 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-
-type Role = "admin" | "operator";
+import React, { useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import './Login.css';
 
 export default function Login() {
-  const [role, setRole] = useState<Role>("admin");
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
+    const navigate = useNavigate();
+    const location = useLocation();
+    
+    // 1. Detect User Type from URL (e.g. /login/operator vs /login/admin)
+    const isOperator = location.pathname.includes('operator');
+    const userType = isOperator ? 'Operator' : 'Admin';
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
+    const [username, setUsername] = useState('');
+    const [password, setPassword] = useState('');
+    const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
 
-    try {
-      const res = await fetch("http://localhost:3000/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
-      });
+    const handleLogin = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError('');
+        setLoading(true);
 
-      if (!res.ok) throw new Error("Invalid credentials");
+        try {
+            // 2. Set Endpoint
+            const endpoint = isOperator 
+                ? 'http://localhost:3000/auth/operator/login' 
+                : 'http://localhost:3000/auth/admin/login'; 
 
-      const data = await res.json();
+            console.log(`Attempting login to: ${endpoint}`);
 
-      // save auth
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("role", data.role);
-      localStorage.setItem("username", data.username);
+            // 3. Make API Call
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password }),
+            });
 
-      // redirect
-      if (data.role === "admin") {
-        navigate("/admin/dashboard");
-      } else {
-        navigate("/operator/dashboard");
-      }
-    } catch (err: any) {
-      alert(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+            const data = await response.json();
 
-  return (
-    <div style={styles.container}>
-      <div style={styles.card}>
-        <h2 style={styles.title}>Jal-Drishti Login</h2>
+            if (!response.ok) {
+                throw new Error(data.message || 'Login failed');
+            }
 
-        {/* ROLE TOGGLE */}
-        <div style={styles.tabs}>
-          <button
-            onClick={() => setRole("admin")}
-            style={{
-              ...styles.tab,
-              ...(role === "admin" ? styles.activeTab : {}),
-            }}
-          >
-            Admin
-          </button>
-          <button
-            onClick={() => setRole("operator")}
-            style={{
-              ...styles.tab,
-              ...(role === "operator" ? styles.activeTab : {}),
-            }}
-          >
-            Operator
-          </button>
+            // 4. Store Data
+            console.log("Login Successful! Saving token...");
+            localStorage.setItem('token', data.token);
+            localStorage.setItem('user', JSON.stringify(isOperator ? data.operator : data.admin));
+            localStorage.setItem('role', userType.toUpperCase()); 
+
+            // 5. Navigate to the correct Dashboard
+            // This is the logic that redirects you
+            if (isOperator) {
+                console.log("Redirecting to Operator Dashboard...");
+                navigate('/operator/dashboard');
+            } else {
+                console.log("Redirecting to Admin Dashboard...");
+                navigate('/admin/dashboard');
+            }
+
+        } catch (err: unknown) {
+            console.error("Login Error:", err);
+            setError(err instanceof Error ? err.message : 'An unexpected error occurred');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="login-container">
+            <div className="login-card">
+                <div className="login-header">
+                    <h2>{userType} Login</h2>
+                    <p>Enter your credentials to access Jal Drishti</p>
+                </div>
+
+                {error && <div className="error-message">{error}</div>}
+
+                <form onSubmit={handleLogin}>
+                    <div className="form-group">
+                        <label>Username</label>
+                        <input 
+                            type="text" 
+                            value={username}
+                            onChange={(e) => setUsername(e.target.value)}
+                            placeholder="Enter username"
+                            required 
+                            className=' text-gray-500'
+                        />
+                    </div>
+
+                    <div className="form-group">
+                        <label>Password</label>
+                        <input 
+                            type="password" 
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            placeholder="Enter password"
+                            required 
+                            className=' text-gray-500'
+                        />
+                    </div>
+
+                    <button type="submit" className="login-btn" disabled={loading}>
+                        {loading ? 'Logging in...' : 'Login'}
+                    </button>
+                </form>
+
+                <div className="login-footer">
+                    <p>Don't have an account? <span onClick={() => navigate('/register')}>Sign Up</span></p>
+                    <p>Back to <span onClick={() => navigate('/')}>Home</span></p>
+                </div>
+            </div>
         </div>
-
-        <form onSubmit={handleLogin} style={styles.form}>
-          <input
-            style={styles.input}
-            placeholder={`${role} username`}
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            required
-          />
-
-          <input
-            style={styles.input}
-            type="password"
-            placeholder="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-
-          <button style={styles.button} disabled={loading}>
-            {loading ? "Logging in..." : `Login as ${role}`}
-          </button>
-        </form>
-      </div>
-    </div>
-  );
+    );
 }
-
-/* ---------------- STYLES ---------------- */
-
-const styles = {
-  container: {
-    height: "100vh",
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    background: "linear-gradient(135deg,#1e3c72,#2a5298)",
-  },
-  card: {
-    width: 360,
-    padding: 24,
-    background: "#fff",
-    borderRadius: 12,
-    boxShadow: "0 10px 30px rgba(0,0,0,.15)",
-  },
-  title: {
-    textAlign: "center" as const,
-    marginBottom: 16,
-  },
-  tabs: {
-    display: "flex",
-    marginBottom: 16,
-    borderRadius: 8,
-    overflow: "hidden",
-    border: "1px solid #ddd",
-  },
-  tab: {
-    flex: 1,
-    padding: 10,
-    cursor: "pointer",
-    background: "#f5f5f5",
-    border: "none",
-    fontWeight: 600,
-  },
-  activeTab: {
-    background: "#2563eb",
-    color: "#fff",
-  },
-  form: {
-    display: "flex",
-    flexDirection: "column" as const,
-    gap: 12,
-  },
-  input: {
-    padding: 10,
-    fontSize: 16,
-    borderRadius: 6,
-    border: "1px solid #ccc",
-  },
-  button: {
-    padding: 12,
-    fontSize: 16,
-    borderRadius: 6,
-    border: "none",
-    background: "#2563eb",
-    color: "#fff",
-    cursor: "pointer",
-    fontWeight: 600,
-  },
-};

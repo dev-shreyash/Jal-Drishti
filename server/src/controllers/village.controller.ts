@@ -47,3 +47,17 @@ export const deleteVillage = async (c: Context) => {
 
   return c.json({ success: true });
 };
+
+export const getVillageOptions = async (c: Context) => {
+  try {
+    const villages = await prisma.village.findMany({
+      select: {
+        village_id: true,
+        village_name: true,
+      },
+    });
+    return c.json(villages, 200);
+  } catch (error) {
+    return c.json({ message: "Failed to fetch villages" }, 500);
+  }
+};

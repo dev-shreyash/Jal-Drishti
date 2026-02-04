@@ -1,629 +1,327 @@
 import { useEffect, useState } from "react";
-import {
-  getOperators,
-  createOperator,
-  updateOperator,
-  deleteOperator,
-} from "../../../services/operator";
-import { getVillages } from "../../../services/village";
-import { useNavigate } from "react-router-dom";
-import {
-  Home,
-  MapPin,
-  Droplet,
-  Building2,
-  Users,
-  Plus,
-  Edit2,
-  Trash2,
-  Check,
-  X,
-  User,
-  Phone,
-  Key,
-  Shield,
-  Activity,
-  AlertCircle,
-  UserCheck,
-  UserX,
+import { getOperators, createOperator, updateOperator, deleteOperator } from "../../../services/operator";
+import { 
+  Plus, Edit2, Trash2, Users, MapPin, 
+  Phone, Key, Check, X, Copy, ShieldCheck, UserPlus
 } from "lucide-react";
 
-interface Village {
-  village_id: number;
-  village_name: string;
-}
-
+// --- Types ---
 interface Operator {
   operator_id: number;
   name: string;
+  contact_number: string;
   username: string;
-  phone: string;
   village_id: number;
-  is_active: boolean;
-  password_hash?: string;
-  village?: Village;
+  village?: { village_name: string };
+  role?: string;
+  status?: string;
 }
 
 interface OperatorForm {
   name: string;
+  contact_number: string;
   username: string;
-  phone: string;
-  password_hash: string;
-  village_id: string;
-  is_active: boolean;
+  password?: string;
 }
 
 export default function Operators() {
-  const navigate = useNavigate();
+  // State
   const [operators, setOperators] = useState<Operator[]>([]);
-  const [villages, setVillages] = useState<Village[]>([]);
+  const [loading, setLoading] = useState(true);
+  
+  // Modal & Form State
   const [open, setOpen] = useState(false);
-  const [edit, setEdit] = useState<Operator | null>(null);
+  const [editMode, setEditMode] = useState(false);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  
+  // Credential Reveal State
+  const [successCreds, setSuccessCreds] = useState<{user: string, pass: string} | null>(null);
+
   const [form, setForm] = useState<OperatorForm>({
     name: "",
+    contact_number: "",
     username: "",
-    phone: "",
-    password_hash: "",
-    village_id: "",
-    is_active: true,
+    password: "" 
   });
-  const [loading, setLoading] = useState(true);
-  const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
-  const [showPassword, setShowPassword] = useState(false);
 
-  const load = async () => {
-    setLoading(true);
+  // 1. Load Data (Only Operators now)
+  const load = async (refresh = false) => {
+    if (refresh) setLoading(true);
     try {
-      const [operatorsData, villagesData] = await Promise.all([
-        getOperators(),
-        getVillages()
-      ]);
-      setOperators(operatorsData);
-      setVillages(villagesData);
+      const opsData = await getOperators();
+      setOperators(opsData);
     } catch (error) {
-      console.error("Failed to load data:", error);
+      console.error("Failed to load operators:", error);
     }
     setLoading(false);
   };
 
   useEffect(() => {
-    load();
+    load(false);
   }, []);
 
-  const save = async () => {
+  // 2. Submit Logic
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     try {
-      const submissionData = {
-        ...form,
-        village_id: form.village_id ? parseInt(form.village_id) : 0,
-        // Don't send password hash if editing and password field is empty
-        ...(edit && !form.password_hash && { password_hash: undefined })
+      const payload = {
+        name: form.name,
+        contact_number: form.contact_number,
+        username: form.username,
+        // Backend will assign village_id from the Admin's token automatically
+        ...(form.password ? { password: form.password } : {})
       };
 
-      if (edit) {
-        await updateOperator(edit.operator_id, submissionData);
+      if (editMode && selectedId) {
+        await updateOperator(selectedId, payload);
+        handleClose();
+        load(true);
       } else {
-        await createOperator(submissionData);
+        await createOperator(payload);
+        setSuccessCreds({ user: form.username, pass: form.password || "" });
+        load(true); 
       }
-
-      setOpen(false);
-      setEdit(null);
-      setForm({
-        name: "",
-        username: "",
-        phone: "",
-        password_hash: "",
-        village_id: "",
-        is_active: true,
-      });
-      setShowPassword(false);
-      load();
     } catch (error) {
-      console.error("Failed to save operator:", error);
+      console.error("Operation failed:", error);
+      alert("Failed to save operator. Username might be taken.");
     }
   };
 
-  const handleDelete = async (operatorId: number) => {
+  // 3. Delete Logic
+  const handleDelete = async (id: number) => {
+    if (!window.confirm("Are you sure? This will immediately revoke their access.")) return;
     try {
-      await deleteOperator(operatorId);
-      setConfirmDelete(null);
-      load();
+      await deleteOperator(id);
+      load(true);
     } catch (error) {
-      console.error("Failed to delete operator:", error);
+      console.error("Delete failed:", error);
     }
+  };
+
+  // Helper Functions
+  const handleEdit = (op: Operator) => {
+    setEditMode(true);
+    setSelectedId(op.operator_id);
+    setForm({
+      name: op.name,
+      contact_number: op.contact_number,
+      username: op.username,
+      password: "" 
+    });
+    setOpen(true);
+  };
+
+  const handleClose = () => {
+    setOpen(false);
+    setEditMode(false);
+    setSuccessCreds(null);
+    setForm({ name: "", contact_number: "", username: "", password: "" });
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    alert("Copied to clipboard!");
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-md border-b-4 border-blue-700">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-3">
-              <div className="bg-blue-700 p-2 rounded-lg">
-                <Droplet className="h-8 w-8 text-white" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">Jal-Drishti</h1>
-                <p className="text-sm text-gray-600">Water Resource Management System</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-4">
-              <div className="text-right">
-                
-              </div>
-            
-            </div>
-          </div>
+    <div className="space-y-6">
+      
+      {/* Page Header */}
+      <div className="bg-white rounded-lg shadow-sm border p-6 flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <Users className="h-6 w-6 text-blue-600"/>
+            Field Operators
+          </h1>
+          <p className="text-gray-600 text-sm">Manage staff accounts and access</p>
         </div>
-      </header>
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="flex">
-          {/* Sidebar */}
-          <aside className="w-64 mr-6">
-            <nav className="bg-white rounded-lg shadow-sm border p-4">
-              <div className="space-y-1">
-                <button
-                  onClick={() => navigate("/admin/dashboard")}
-                  className="w-full flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-700 rounded-lg transition-colors"
-                >
-                       <Home className="h-5 w-5" />
-                  <span>Dashboard</span>
-                </button>
-                <button
-                  onClick={() => navigate("/admin/villages")}
-                  className="w-full flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-700 rounded-lg transition-colors"
-                >
-                  <MapPin className="h-5 w-5" />
-                  <span>Villages</span>
-                </button>
-                <button
-                  onClick={() => navigate("/admin/pumps")}
-                  className="w-full flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-700 rounded-lg transition-colors"
-                >
-                  <Droplet className="h-5 w-5" />
-                  <span>Pumps</span>
-                </button>
-                <button
-                  onClick={() => navigate("/admin/tanks")}
-                  className="w-full flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-700 rounded-lg transition-colors"
-                >
-                  <Building2 className="h-5 w-5" />
-                  <span>Tanks</span>
-                </button>
-                <button
-                  onClick={() => navigate("/admin/operators")}
-                  className="w-full flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-700 rounded-lg transition-colors"
-                >
-                  <Users className="h-5 w-5" />
-                  <span>Operators</span>
-                </button>
-              </div>
-            </nav>
-
-            {/* Stats Card */}
-            <div className="mt-6 bg-gradient-to-r from-amber-600 to-amber-800 text-white rounded-lg shadow-md p-5">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm opacity-90">Total Operators</p>
-                  <p className="text-2xl font-bold">{operators.length}</p>
-                </div>
-                <Users className="h-12 w-12 opacity-80" />
-              </div>
-              <div className="mt-4 pt-4 border-t border-amber-500">
-                <p className="text-sm opacity-90">Active Operators</p>
-                <p className="text-xl font-semibold">
-                  {operators.filter(o => o.is_active).length}
-                </p>
-              </div>
-            </div>
-
-            {/* Quick Actions */}
-            <div className="mt-6 bg-white rounded-lg shadow-sm border p-4">
-              <h4 className="font-medium text-gray-900 mb-3">Operator Duties</h4>
-              <ul className="space-y-2 text-sm text-gray-600">
-                <li className="flex items-center space-x-2">
-                  <Activity className="h-4 w-4 text-blue-600" />
-                  <span>Daily pump inspection</span>
-                </li>
-                <li className="flex items-center space-x-2">
-                  <Droplet className="h-4 w-4 text-blue-600" />
-                  <span>Water quality testing</span>
-                </li>
-                <li className="flex items-center space-x-2">
-                  <AlertCircle className="h-4 w-4 text-blue-600" />
-                  <span>Issue reporting</span>
-                </li>
-                <li className="flex items-center space-x-2">
-                  <Shield className="h-4 w-4 text-blue-600" />
-                  <span>Equipment maintenance</span>
-                </li>
-              </ul>
-            </div>
-          </aside>
-
-          {/* Main Content */}
-          <main className="flex-1">
-            {/* Page Header */}
-            <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h1 className="text-2xl font-bold text-gray-900">Operators Management</h1>
-                  <p className="text-gray-600">Manage field operators responsible for water system maintenance</p>
-                </div>
-                <button
-                  onClick={() => setOpen(true)}
-                  className="bg-blue-700 hover:bg-blue-800 text-white px-5 py-2.5 rounded-lg font-medium flex items-center space-x-2 shadow-sm transition-colors"
-                >
-                  <Plus className="h-5 w-5" />
-                  <span>Add New Operator</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Operators Table */}
-            <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
-              <div className="px-6 py-4 border-b bg-gray-50">
-                <h2 className="text-lg font-semibold text-gray-800">All Operators</h2>
-              </div>
-              
-              {loading ? (
-                <div className="p-8 text-center">
-                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-700"></div>
-                  <p className="mt-2 text-gray-600">Loading operators data...</p>
-                </div>
-              ) : operators.length === 0 ? (
-                <div className="p-8 text-center">
-                  <Users className="h-12 w-12 text-gray-300 mx-auto" />
-                  <p className="mt-2 text-gray-600">No operators found. Add your first operator.</p>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="bg-gray-50">
-                      <tr className="border-b">
-                        <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Operator Details</th>
-                        <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Contact</th>
-                        <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Assigned Village</th>
-                        <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Status</th>
-                        <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y">
-                      {operators.map((o) => (
-                        <tr key={o.operator_id} className="hover:bg-gray-50 transition-colors">
-                          <td className="py-4 px-6">
-                            <div>
-                              <p className="font-medium text-gray-900">{o.name}</p>
-                              <div className="flex items-center space-x-2 text-sm text-gray-500 mt-1">
-                                <User className="h-4 w-4" />
-                                <span>@{o.username}</span>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="py-4 px-6">
-                            <div className="flex items-center space-x-2">
-                              <Phone className="h-4 w-4 text-gray-400" />
-                              <span className="font-medium">{o.phone || "N/A"}</span>
-                            </div>
-                          </td>
-                          <td className="py-4 px-6">
-                            <div className="flex items-center space-x-2">
-                              <MapPin className="h-4 w-4 text-gray-400" />
-                              <span className="font-medium">{o.village?.village_name || "Unassigned"}</span>
-                            </div>
-                          </td>
-                          <td className="py-4 px-6">
-                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm ${o.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
-                              {o.is_active ? (
-                                <>
-                                  <UserCheck className="h-3 w-3 mr-1" />
-                                  Active
-                                </>
-                              ) : (
-                                <>
-                                  <UserX className="h-3 w-3 mr-1" />
-                                  Inactive
-                                </>
-                              )}
-                            </span>
-                          </td>
-                          <td className="py-4 px-6">
-                            <div className="flex space-x-2">
-                              <button
-                                onClick={() => {
-                                  setEdit(o);
-                                  setForm({
-                                    name: o.name || "",
-                                    username: o.username || "",
-                                    phone: o.phone || "",
-                                    password_hash: "",
-                                    village_id: o.village_id?.toString() || "",
-                                    is_active: o.is_active || true,
-                                  });
-                                  setOpen(true);
-                                }}
-                                className="flex items-center space-x-1 px-3 py-1.5 bg-blue-50 text-blue-700 rounded hover:bg-blue-100 transition-colors"
-                              >
-                                <Edit2 className="h-4 w-4" />
-                                <span className="text-sm">Edit</span>
-                              </button>
-                              <button
-                                onClick={() => setConfirmDelete(o.operator_id)}
-                                className="flex items-center space-x-1 px-3 py-1.5 bg-red-50 text-red-700 rounded hover:bg-red-100 transition-colors"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                                <span className="text-sm">Delete</span>
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-
-            {/* Info Footer */}
-            <div className="mt-6 bg-blue-50 border border-blue-100 rounded-lg p-4">
-              <div className="flex items-start space-x-3">
-                <Shield className="h-5 w-5 text-blue-700 mt-0.5" />
-                <div>
-                  <p className="text-sm text-gray-700">
-                    <strong>Security Note:</strong> Operator accounts should be created only for authorized field staff. 
-                    Ensure passwords are strong and regularly updated. Deactivate accounts immediately when operators are reassigned.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </main>
-        </div>
+        <button onClick={() => setOpen(true)} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors shadow-sm">
+          <UserPlus className="h-5 w-5" />
+          <span>Register New Operator</span>
+        </button>
       </div>
 
-      {/* Add/Edit Operator Modal */}
+      {/* Operators Table */}
+      <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
+        {loading ? (
+          <div className="p-12 text-center text-gray-500">Loading staff directory...</div>
+        ) : operators.length === 0 ? (
+          <div className="p-12 text-center text-gray-500">No operators found. Register your first field staff.</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-gray-50 border-b">
+                <tr>
+                  <th className="py-3 px-6 font-semibold text-gray-700">Operator Details</th>
+                  <th className="py-3 px-6 font-semibold text-gray-700">Village</th>
+                  <th className="py-3 px-6 font-semibold text-gray-700">Account Status</th>
+                  <th className="py-3 px-6 font-semibold text-gray-700 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {operators.map((op) => (
+                  <tr key={op.operator_id} className="hover:bg-gray-50 group transition-colors">
+                    <td className="py-4 px-6">
+                      <div className="font-medium text-gray-900 text-base">{op.name}</div>
+                      <div className="text-gray-500 flex items-center gap-1 mt-1">
+                        <Phone className="h-3 w-3" /> {op.contact_number}
+                      </div>
+                    </td>
+                    <td className="py-4 px-6">
+                      <div className="flex items-center gap-2 text-gray-700">
+                        <MapPin className="h-4 w-4 text-gray-400" />
+                        {/* Display village from fetched data (read-only) */}
+                        <span className="font-medium">{op.village?.village_name || "Assigned"}</span>
+                      </div>
+                    </td>
+                    <td className="py-4 px-6">
+                      <div className="flex items-center gap-2">
+                        <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs font-bold border border-green-200 flex items-center gap-1">
+                          <ShieldCheck className="h-3 w-3"/> Active
+                        </span>
+                        <span className="text-gray-400 text-xs font-mono bg-gray-100 px-1 rounded">@{op.username}</span>
+                      </div>
+                    </td>
+                    <td className="py-4 px-6 text-right">
+                      <div className="flex justify-end gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                        <button onClick={() => handleEdit(op)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors border border-transparent hover:border-blue-100" title="Edit Details">
+                          <Edit2 className="h-4 w-4"/>
+                        </button>
+                        <button onClick={() => handleDelete(op.operator_id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-100" title="Revoke Access">
+                          <Trash2 className="h-4 w-4"/>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* --- ADD / EDIT MODAL --- */}
       {open && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg">
-            <div className="p-6 border-b">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="bg-blue-100 p-2 rounded-lg">
-                    <User className="h-6 w-6 text-blue-700" />
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-bold text-gray-900">
-                      {edit ? "Edit Operator Details" : "Register New Operator"}
-                    </h2>
-                    <p className="text-sm text-gray-600">Fill in the operator information below</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => {
-                    setOpen(false);
-                    setEdit(null);
-                    setForm({
-                      name: "",
-                      username: "",
-                      phone: "",
-                      password_hash: "",
-                      village_id: "",
-                      is_active: true,
-                    });
-                    setShowPassword(false);
-                  }}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
+            
+            {/* Modal Header */}
+            <div className="p-4 border-b bg-gray-50 flex justify-between items-center">
+              <h2 className="font-bold text-gray-800 flex items-center gap-2">
+                <Users className="h-5 w-5 text-blue-600"/>
+                {successCreds ? "Registration Successful!" : editMode ? "Edit Operator Details" : "Register Operator"}
+              </h2>
+              <button onClick={handleClose} className="text-gray-400 hover:text-gray-600 transition-colors">
+                <X className="h-5 w-5"/>
+              </button>
             </div>
 
-            <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
-              <div className="grid grid-cols-1 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Full Name
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Enter operator's full name"
-                    value={form.name}
-                    onChange={(e) =>
-                      setForm({ ...form, name: e.target.value })
-                    }
-                    className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Username
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Enter username"
-                      value={form.username}
-                      onChange={(e) =>
-                        setForm({ ...form, username: e.target.value })
-                      }
-                      className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
-                    />
+            {/* Modal Content */}
+            <div className="p-6">
+              
+              {/* SUCCESS STATE */}
+              {successCreds ? (
+                <div className="space-y-4 text-center">
+                  <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-2 animate-bounce">
+                    <Check className="h-8 w-8" />
+                  </div>
+                  <h3 className="text-lg font-bold text-gray-900">Account Created</h3>
+                  <p className="text-sm text-gray-500">
+                    Share these credentials with the operator immediately. 
+                    <br/><span className="text-red-500 text-xs font-bold">The password cannot be viewed again.</span>
+                  </p>
+                  
+                  <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 text-left space-y-3 mt-4">
+                    <div>
+                      <label className="text-xs font-bold text-gray-500 uppercase">Username</label>
+                      <div className="flex justify-between items-center bg-white p-2 rounded border border-blue-100 mt-1">
+                        <span className="font-mono text-gray-900 font-bold">{successCreds.user}</span>
+                        <button onClick={() => copyToClipboard(successCreds.user)} className="text-blue-600 hover:text-blue-800"><Copy className="h-4 w-4"/></button>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-gray-500 uppercase">Password</label>
+                      <div className="flex justify-between items-center bg-white p-2 rounded border border-blue-100 mt-1">
+                        <span className="font-mono text-gray-900 font-bold">{successCreds.pass}</span>
+                        <button onClick={() => copyToClipboard(successCreds.pass)} className="text-blue-600 hover:text-blue-800"><Copy className="h-4 w-4"/></button>
+                      </div>
+                    </div>
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Phone Number
-                    </label>
-                    <input
-                      type="tel"
-                      placeholder="Enter phone number"
-                      value={form.phone}
-                      onChange={(e) =>
-                        setForm({ ...form, phone: e.target.value })
-                      }
-                      className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
-                    />
-                  </div>
+                  <button onClick={handleClose} className="w-full bg-gray-900 text-white py-2.5 rounded-lg font-medium hover:bg-black mt-4 transition-colors">
+                    Close
+                  </button>
                 </div>
+              ) : (
+                /* FORM STATE */
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                      <input 
+                        required 
+                        className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                        placeholder="e.g. Ramesh Patil"
+                        value={form.name} onChange={e => setForm({...form, name: e.target.value})}
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Mobile Number</label>
+                      <input 
+                        required 
+                        type="tel"
+                        className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                        placeholder="10-digit number"
+                        value={form.contact_number} onChange={e => setForm({...form, contact_number: e.target.value})}
+                      />
+                    </div>
+                  </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    {edit ? "New Password (leave blank to keep current)" : "Password"}
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showPassword ? "text" : "password"}
-                      placeholder={edit ? "Enter new password or leave blank" : "Enter password"}
-                      value={form.password_hash}
-                      onChange={(e) =>
-                        setForm({ ...form, password_hash: e.target.value })
-                      }
-                      className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition pr-10"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                    >
-                      {showPassword ? (
-                        <Key className="h-5 w-5" />
-                      ) : (
-                        <Key className="h-5 w-5" />
-                      )}
+                  <div className="border-t border-gray-100 my-4 pt-4 bg-gray-50 p-3 rounded-lg">
+                    <h3 className="text-xs font-bold text-gray-500 uppercase mb-3 flex items-center gap-1">
+                      <Key className="h-3 w-3"/> Login Access
+                    </h3>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
+                        <div className="relative">
+                          <input 
+                            required 
+                            className="w-full pl-8 p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white font-mono text-sm"
+                            value={form.username} onChange={e => setForm({...form, username: e.target.value})}
+                            placeholder="operator_username"
+                          />
+                          <span className="absolute left-3 top-3 text-gray-400 font-bold">@</span>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          {editMode ? "Reset Password (Leave blank to keep)" : "Create Password"}
+                        </label>
+                        <input 
+                          type="text" 
+                          required={!editMode}
+                          className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none font-mono text-sm"
+                          value={form.password} onChange={e => setForm({...form, password: e.target.value})}
+                          placeholder={editMode ? "••••••••" : "Enter a strong password"}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-3 pt-2">
+                    <button type="button" onClick={handleClose} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg font-medium transition-colors">Cancel</button>
+                    <button type="submit" className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium flex items-center gap-2 shadow-sm transition-colors">
+                      <Check className="h-4 w-4"/> {editMode ? "Update Details" : "Create Account"}
                     </button>
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">
-                    {edit ? "Password will only be updated if field is not empty" : "Create a strong password for the operator"}
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Assigned Village
-                  </label>
-                  <select
-                    className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
-                    value={form.village_id}
-                    onChange={(e) =>
-                      setForm({ ...form, village_id: e.target.value })
-                    }
-                  >
-                    <option value="">Select Village</option>
-                    {villages.map((v) => (
-                      <option key={v.village_id} value={v.village_id}>
-                        {v.village_name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="flex items-center space-x-3 p-4 bg-gray-50 rounded-lg">
-                  <input
-                    type="checkbox"
-                    id="active-status"
-                    checked={form.is_active}
-                    onChange={(e) =>
-                      setForm({ ...form, is_active: e.target.checked })
-                    }
-                    className="h-5 w-5 text-blue-600 rounded focus:ring-blue-500"
-                  />
-                  <label htmlFor="active-status" className="flex items-center space-x-2">
-                    {form.is_active ? (
-                      <UserCheck className="h-5 w-5 text-green-600" />
-                    ) : (
-                      <UserX className="h-5 w-5 text-gray-600" />
-                    )}
-                    <div>
-                      <p className="font-medium text-gray-900">
-                        {form.is_active ? "Active" : "Inactive"}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        {form.is_active 
-                          ? "Operator can access the system" 
-                          : "Operator account is disabled"}
-                      </p>
-                    </div>
-                  </label>
-                </div>
-              </div>
-            </div>
-
-            <div className="p-6 border-t bg-gray-50 rounded-b-xl">
-              <div className="flex justify-end space-x-3">
-                <button
-                  onClick={() => {
-                    setOpen(false);
-                    setEdit(null);
-                    setForm({
-                      name: "",
-                      username: "",
-                      phone: "",
-                      password_hash: "",
-                      village_id: "",
-                      is_active: true,
-                    });
-                    setShowPassword(false);
-                  }}
-                  className="px-5 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={save}
-                  className="px-5 py-2.5 bg-blue-700 text-white rounded-lg hover:bg-blue-800 transition-colors font-medium flex items-center space-x-2"
-                >
-                  <Check className="h-5 w-5" />
-                  <span>{edit ? "Update Operator" : "Register Operator"}</span>
-                </button>
-              </div>
+                </form>
+              )}
             </div>
           </div>
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
-      {confirmDelete !== null && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full">
-            <div className="p-6">
-              <div className="flex items-center space-x-3 mb-4">
-                <div className="bg-red-100 p-2 rounded-lg">
-                  <Trash2 className="h-6 w-6 text-red-600" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold text-gray-900">Confirm Deletion</h3>
-                  <p className="text-gray-600">Are you sure you want to delete this operator?</p>
-                </div>
-              </div>
-              
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-                <p className="text-sm text-yellow-800">
-                  <strong>Warning:</strong> This action cannot be undone. The operator will lose all system access 
-                  and their assigned duties will need to be reassigned.
-                </p>
-              </div>
-
-              <div className="flex justify-end space-x-3">
-                <button
-                  onClick={() => setConfirmDelete(null)}
-                  className="px-5 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => handleDelete(confirmDelete)}
-                  className="px-5 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium flex items-center space-x-2"
-                >
-                  <Trash2 className="h-5 w-5" />
-                  <span>Delete Operator</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

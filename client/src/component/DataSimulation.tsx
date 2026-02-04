@@ -39,7 +39,7 @@ export default function DataSimulation() {
 
   // 1. Fetch Assets on Load
   useEffect(() => {
-    axios.get('http://localhost:3000/api/simulation/assets')
+    axios.get('http://localhost:3000/simulation/assets')
       .then(res => setVillages(res.data))
       .catch(err => console.error("Failed to load assets", err))
   }, [])
@@ -53,7 +53,7 @@ export default function DataSimulation() {
 
     try {
       // Calls your new modular Backend Route
-      const res = await axios.post('http://localhost:3000/api/simulation/generate', {
+      const res = await axios.post('http://localhost:3000/simulation/generate', {
         pump_id: selectedPumpId,
         days: 90 // Generates 3 months of history
       })
@@ -78,7 +78,7 @@ export default function DataSimulation() {
       {/* Header */}
       <div className="bg-gradient-to-r from-blue-600 to-blue-800 p-6 text-white flex items-center gap-4">
         <div className="p-3 bg-white/20 rounded-full backdrop-blur-sm">
-          <Database size={24} className="text-white" />
+          <Database size={24} className=" text-gray-500" />
         </div>
         <div>
           <h2 className="text-xl font-bold">AI Data Seed</h2>
@@ -136,7 +136,7 @@ export default function DataSimulation() {
           className={`w-full py-4 rounded-lg font-bold text-lg flex items-center justify-center gap-2 transition-all shadow-md
             ${!selectedPumpId || loading
               ? 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none' 
-              : 'bg-blue-600 hover:bg-blue-700 text-white hover:shadow-lg active:scale-95'
+              : 'bg-blue-600 hover:bg-blue-700  text-gray-500 hover:shadow-lg active:scale-95'
             }`}
         >
           {loading ? (

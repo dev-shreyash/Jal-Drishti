@@ -1,0 +1,161 @@
+/* =========================================
+   1. BASE STYLES
+   ========================================= */
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background-color: #f4f6f8; /* Light gray background */
+  color: #333;
+  line-height: 1.6;
+}
+
+.home-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* =========================================
+   2. HEADER (Simple & Solid)
+   ========================================= */
+.home-header {
+  background-color: #0056b3; /* Standard professional blue */
+  color: white;
+  padding: 3rem 1rem;
+  text-align: center;
+  border-bottom: 4px solid #004494; /* Subtle bottom edge */
+}
+
+.home-header h1 {
+  margin: 0;
+  font-size: 2.5rem;
+  font-weight: 700;
+}
+
+.tagline {
+  font-size: 1.1rem;
+  margin-top: 0.5rem;
+  opacity: 0.9;
+  font-weight: 400;
+}
+
+/* =========================================
+   3. CONTENT LAYOUT
+   ========================================= */
+.info-section {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  max-width: 1000px;
+  margin: 40px auto;
+  padding: 0 20px;
+  flex-wrap: wrap;
+}
+
+/* Clean, Boxy Cards */
+.info-card, .features {
+  background: white;
+  padding: 25px;
+  border: 1px solid #ddd; /* Simple border instead of shadow */
+  border-radius: 8px; /* Slight rounding, not too pill-shaped */
+  flex: 1;
+  min-width: 300px;
+}
+
+.info-section h2, .auth-section h2 {
+  color: #0056b3;
+  font-size: 1.5rem;
+  margin-top: 0;
+  border-bottom: 2px solid #eee;
+  padding-bottom: 10px;
+  margin-bottom: 20px;
+}
+
+.features ul {
+  padding-left: 20px;
+}
+
+.features li {
+  margin-bottom: 10px;
+}
+
+/* =========================================
+   4. LOGIN SECTION
+   ========================================= */
+.auth-section {
+  text-align: center;
+  background: white;
+  padding: 30px;
+  margin: 0 auto 40px auto;
+  max-width: 500px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+}
+
+.button-group {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  margin-top: 20px;
+}
+
+/* Standard Buttons */
+.btn {
+  padding: 10px 25px;
+  font-size: 1rem;
+  border: none;
+  border-radius: 4px; /* Standard button corners */
+  cursor: pointer;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: background-color 0.2s;
+}
+
+.btn-admin {
+  background-color: #343a40; /* Dark Grey for Admin */
+  color: white;
+}
+
+.btn-admin:hover {
+  background-color: #23272b;
+}
+
+.btn-operator {
+  background-color: #28a745; /* Standard Green for Operator */
+  color: white;
+}
+
+.btn-operator:hover {
+  background-color: #218838;
+}
+
+/* =========================================
+   5. FOOTER
+   ========================================= */
+.home-footer {
+  margin-top: auto;
+  background-color: #e9ecef;
+  color: #6c757d;
+  text-align: center;
+  padding: 20px;
+  font-size: 0.9rem;
+  border-top: 1px solid #ddd;
+}
+
+/* =========================================
+   6. MOBILE FIXES
+   ========================================= */
+@media (max-width: 768px) {
+  .info-section {
+    flex-direction: column;
+  }
+  
+  .button-group {
+    flex-direction: column;
+  }
+
+  .btn {
+    width: 100%;
+  }
+}

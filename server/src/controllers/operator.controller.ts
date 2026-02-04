@@ -1,119 +1,121 @@
 import { Context } from "hono";
-import bcrypt from "bcryptjs";
-import { prisma } from "../lib/prisma";
-import { signJwt } from "../lib/jwt";
+import prisma from "../db";
+import * as bcrypt from "bcrypt";
 
-export const operatorLogin = async (c: Context) => {
+// --- GET ALL OPERATORS ---
+export const getOperators = async (c: Context) => {
   try {
-    const { mobile, password } = await c.req.json();
+    const payload = c.get("jwtPayload");
+    
+    // 👇 FIX: Support both id and admin_id from token
+    const adminId = payload?.id || payload?.admin_id;
 
-    if (!mobile || !password) {
-      return c.json(
-        { success: false, message: "Mobile and password required" },
-        400
-      );
+    if (!adminId) {
+      return c.json({ error: "Invalid Token: Missing Admin ID" }, 401);
     }
 
-    const operator = await prisma.operator.findFirst({
-      where: {
-        phone: mobile,
-        is_active: true,
+    const admin = await prisma.admin.findUnique({
+      where: { admin_id: Number(adminId) },
+      select: { village_id: true }
+    });
+
+    if (!admin?.village_id) {
+      return c.json({ error: "Admin has no assigned village" }, 403);
+    }
+
+    const operators = await prisma.operator.findMany({
+      where: { village_id: admin.village_id },
+      include: { 
+        village: { select: { village_name: true } } 
       },
+      orderBy: { 
+        operator_id: 'desc' // 👈 FIX: Use operator_id instead of created_at
+      }
     });
 
-    if (!operator) {
-      return c.json({ success: false, message: "Operator not found" }, 404);
-    }
-
-    const valid = await bcrypt.compare(password, operator.password_hash);
-
-    if (!valid) {
-      return c.json({ success: false, message: "Invalid password" }, 401);
-    }
-
-    const token = signJwt({
-      operator_id: operator.operator_id,
-      role: "OPERATOR",
-      village_id: operator.village_id,
-    });
-
-    return c.json({
-      success: true,
-      token,
-      operator: {
-        id: operator.operator_id,
-        name: operator.name,
-        phone: operator.phone,
-      },
-    });
-  } catch (err) {
-    console.error(err);
-    return c.json({ success: false, message: "Login failed" }, 500);
+    return c.json(operators);
+  } catch (error) {
+    console.error("Get Operators Error:", error);
+    return c.json({ error: "Failed to fetch operators" }, 500);
   }
 };
 
-export const createChangeRequest = async (c: Context) => {
+// --- CREATE OPERATOR ---
+export const createOperator = async (c: Context) => {
   try {
-    const operator = c.get("operator");
+    const body = await c.req.json();
+    const payload = c.get("jwtPayload");
+    
+    // 👇 FIX: Support both id and admin_id
+    const adminId = payload?.id || payload?.admin_id;
+
+    if (!adminId) {
+      return c.json({ error: "Unauthorized" }, 401);
+    }
+
+    const admin = await prisma.admin.findUnique({
+      where: { admin_id: Number(adminId) },
+      select: { village_id: true }
+    });
+
+    if (!admin?.village_id) {
+      return c.json({ error: "Unauthorized: Admin has no village" }, 403);
+    }
+
+    const hashedPassword = await bcrypt.hash(body.password, 10);
+
+    const newOperator = await prisma.operator.create({
+      data: {
+        name: body.name,
+        phone: body.contact_number,
+        username: body.username,
+        password_hash: hashedPassword,
+        village_id: admin.village_id, // Auto-assign
+      }
+    });
+
+    const { password_hash, ...safeOperator } = newOperator;
+    return c.json(safeOperator, 201);
+  } catch (error) {
+    console.error("Create Operator Error:", error);
+    return c.json({ error: "Failed to create operator" }, 500);
+  }
+};
+
+// --- UPDATE OPERATOR ---
+export const updateOperator = async (c: Context) => {
+  try {
+    const id = Number(c.req.param("id"));
     const body = await c.req.json();
 
+    const updateData: any = {
+      name: body.name,
+      contact_number: body.contact_number,
+      username: body.username
+    };
 
-    if (body.request_type === "UPDATE" && !body.pump_id) {
-      return c.json(
-        { success: false, message: "pump_id is required for update request" },
-        400
-      );
+    if (body.password) {
+      updateData.password_hash = await bcrypt.hash(body.password, 10);
     }
 
-   
-    let pump = null;
-    if (body.pump_id) {
-      pump = await prisma.pump.findFirst({
-        where: {
-          pump_id: body.pump_id,
-          village_id: operator.village_id,
-        },
-      });
-
-      if (!pump) {
-        return c.json(
-          { success: false, message: "Pump not found or unauthorized" },
-          403
-        );
-      }
-    }
-
-   
-    const request = await prisma.changeRequest.create({
-      data: {
-        request_type: body.request_type, // CREATE | UPDATE
-        operator_id: operator.operator_id,
-        pump_id: body.pump_id ?? null,
-
-        req_pump_name: body.pump_name ?? null,
-        req_model_number: body.model_number ?? null,
-        req_latitude: body.latitude ?? null,
-        req_longitude: body.longitude ?? null,
-        req_flow_rate: body.flow_rate_lph ?? null,
-        req_is_smart: body.is_smart_pump ?? null,
-
-        reason: body.reason ?? null,
-      },
+    const updatedOperator = await prisma.operator.update({
+      where: { operator_id: id },
+      data: updateData
     });
 
-    return c.json({
-      success: true,
-      message: "Change request sent for admin approval",
-      request,
-    });
-  } catch (err) {
-    console.error("ChangeRequest Error:", err);
-    return c.json(
-      { success: false, message: "Failed to create request" },
-      500
-    );
+    return c.json(updatedOperator);
+  } catch (error) {
+    return c.json({ error: "Update failed" }, 500);
   }
 };
 
-
-
+// --- DELETE OPERATOR ---
+export const deleteOperator = async (c: Context) => {
+  try {
+    const id = Number(c.req.param("id"));
+    await prisma.operator.delete({ where: { operator_id: id } });
+    return c.json({ success: true });
+  } catch (error) {
+    return c.json({ error: "Delete failed" }, 500);
+  }
+};

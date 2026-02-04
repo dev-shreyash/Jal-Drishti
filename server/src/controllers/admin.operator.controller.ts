@@ -72,7 +72,7 @@ export const handleChangeRequest = async (c: Context) => {
       );
     }
 
-    const request = await prisma.ChangeRequest.findUnique({
+    const request = await prisma.changeRequest.findUnique({
       where: { request_id: requestId }
     });
 
@@ -94,7 +94,7 @@ export const handleChangeRequest = async (c: Context) => {
     // REJECT FLOW
     // =========================
     if (action === "REJECT") {
-      await prisma.ChangeRequest.update({
+      await prisma.changeRequest.update({
         where: { request_id: requestId },
         data: {
           status: "REJECTED",
@@ -147,7 +147,7 @@ export const handleChangeRequest = async (c: Context) => {
     });
 
     // Update request status
-    await prisma.ChangeRequest.update({
+    await prisma.changeRequest.update({
       where: { request_id: requestId },
       data: {
         status: "APPROVED",
