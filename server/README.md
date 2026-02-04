@@ -1,5 +1,3 @@
-
-
 # Jal-Drishti Backend API Reference (Frontend Use)
 
 ## Authentication
@@ -34,6 +32,10 @@ Authorization: Bearer <token>
 | Resident  | POST   | /resident/register                            | Register new resident                    | No           |
 | Resident  | POST   | /resident/login                               | Resident login, returns JWT              | No           |
 | Resident  | POST   | /resident/complaint                           | Raise complaint                          | Yes          |
+| Resident  | GET    | /resident/complaints                          | Get resident's complaints                 | Yes          |
+| Resident  | GET    | /resident/announcements                       | Get announcements                         | Yes          |
+| Resident  | GET    | /resident/water-status                        | Get current water status                  | Yes          |
+| Daily Log | POST   | /dailylog                                     | Create a daily log entry                  | Yes          |
 
 ---
 
@@ -137,6 +139,14 @@ Response: `{ "success": true, "token": "...", "resident": {...} }`
 Raise complaint.
 Request: `{ "category": "Water Quality", "description": "Issue details", "photo_url": "...", "pump_id": 1 }`
 Response: `{ "success": true, "message": "Complaint submitted successfully", "complaint": {...} }`
+
+#### /resident/complaints (GET)
+Get resident's complaints.
+Response: `{ "success": true, "complaints": [...] }`
+
+#### /resident/announcements (GET)
+Get announcements.
+Response: `{ "success": true, "announcements": [...] }`
 
 ---
 
