@@ -1,5 +1,5 @@
 // server/src/ai/prediction.ts
-import ARIMA from 'arima'; 
+import ARIMA from "arima";
 
 interface DailyUsage {
   date: Date;

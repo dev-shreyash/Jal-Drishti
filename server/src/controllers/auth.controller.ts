@@ -1,38 +1,33 @@
-import { Context } from "hono";
-import { sign } from "hono/jwt";
-import prisma from "../db";   // ✅ USE TEAMMATE DB FILE
+import prisma from "../db";
+import * as bcrypt from "bcrypt";
+import * as jwt from "jsonwebtoken";
 
-export const login = async (c: Context) => {
+export const login = async (c: any) => {
   const { username, password } = await c.req.json();
 
-  // 1. Find user in DB
-  const user = await prisma.user.findUnique({
-    where: { username }
-  });
+  // check admin
+  const admin = await prisma.admin.findUnique({ where: { username } });
+  if (admin && await bcrypt.compare(password, admin.password_hash)) {
+    const token = jwt.sign(
+      { id: admin.admin_id, role: "admin" },
+      "secret",
+      { expiresIn: "1d" }
+    );
 
-  // 2. Validate
-  if (!user || user.password !== password) {
-    return c.json({ error: "Invalid username or password" }, 401);
+    return c.json({ token, role: "admin", username });
   }
 
-  // 3. Create token
-  const token = await sign(
-    {
-      id: user.id,
-      role: user.role,
-      username: user.username,
-      exp: Math.floor(Date.now() / 1000) + 60 * 60
-    },
-    "secret_key"
-  );
-  
+  // check operator
+  const operator = await prisma.operator.findUnique({ where: { username } });
+  if (operator && await bcrypt.compare(password, operator.password_hash)) {
+    const token = jwt.sign(
+      { id: operator.operator_id, role: "operator" },
+      "secret",
+      { expiresIn: "1d" }
+    );
 
-  // 4. Send role to frontend ✅
-  return c.json({
-    message: "Login success",
-    token,
-    role: user.role
-  });
-  
+    return c.json({ token, role: "operator", username });
+  }
+
+  return c.json({ message: "Invalid credentials" }, 401);
 };
- console.log("DB URL =", process.env.DATABASE_URL);

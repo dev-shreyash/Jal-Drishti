@@ -5,17 +5,194 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  //url      = env("DATABASE_URL")
+  provider = "mysql"
+  url      = env("DATABASE_URL")
 }
 
-model User {
-  id       Int    @id @default(autoincrement())
-  username String @unique
-  password String
-  role     String
+// ============================================
+// 1. LOCATION & VILLAGE
+// ============================================
+model Village {
+  village_id     Int      @id @default(autoincrement())
+  village_name   String
+  taluka         String
+  district       String
+  state          String
+  pincode        String
+  population     Int?
+  created_at     DateTime @default(now())
+
+  // Relationships
+  admins         Admin[]
+  operators      Operator[]
+  residents      Resident[]     // Added: Link to Residents
+  pumps          Pump[]
+  tanks          Tank[]
+  announcements  Announcement[] // Added: Link to Announcements
+  ai_models AiModel[]
 }
 
+// ============================================
+// 2. ACTORS (Admin & Operator)
+// ============================================
+model Admin {
+  admin_id       Int      @id @default(autoincrement())
+  name           String
+  username       String   @unique
+  password_hash  String
+  email          String?
+  contact_number String?
+  village_id     Int
+  village        Village  @relation(fields: [village_id], references: [village_id])
+  created_at     DateTime @default(now())
+}
+
+model Operator {
+  operator_id    Int      @id @default(autoincrement())
+  name           String
+  phone          String
+  username       String   @unique
+  password_hash  String
+  is_active      Boolean  @default(true)
+  village_id     Int
+  village        Village  @relation(fields: [village_id], references: [village_id])
+  created_at     DateTime @default(now())
+  logs           DailyLog[] 
+  change_requests ChangeRequest[]
+}
+
+// ============================================
+// 3. ASSETS (Pumps & Tanks)
+// ============================================
+model Pump {
+  pump_id           Int      @id @default(autoincrement())
+  pump_name         String
+  model_number      String?
+  installation_date DateTime?
+  last_maintained   DateTime?
+  qr_code           String   @unique
+  latitude          Float
+  longitude         Float
+  flow_rate_lph     Int
+  is_smart_pump     Boolean  @default(false)
+  village_id        Int
+  village           Village  @relation(fields: [village_id], references: [village_id])
+  logs              DailyLog[]
+  sensor_readings   SensorLog[]
+  predictions       Prediction[]
+  complaints        Complaint[] // Added: Complaints can optionally link to a specific pump
+  change_requests   ChangeRequest[]
+}
+
+model Tank {
+  tank_id           Int      @id @default(autoincrement())
+  tank_name         String
+  capacity_liters   Int
+  material_type     String?
+  last_cleaned_date DateTime?
+  latitude          Float?
+  longitude         Float?
+  is_smart_tank     Boolean  @default(false)
+  village_id        Int
+  village           Village  @relation(fields: [village_id], references: [village_id])
+  sensor_readings   SensorLog[] 
+}
+
+// ============================================
+// 4. MANUAL LOGS
+// ============================================
+model DailyLog {
+  log_id         Int      @id @default(autoincrement())
+  start_time     DateTime
+  end_time       DateTime
+  usage_liters   Float
+  gps_lat        Float
+  gps_lng        Float
+  photo_url      String?
+  chlorine_added Boolean  @default(false)
+  chlorine_ppm   Float?
+  created_at     DateTime @default(now())
+  operator_id    Int
+  operator       Operator @relation(fields: [operator_id], references: [operator_id])
+  pump_id        Int
+  pump           Pump     @relation(fields: [pump_id], references: [pump_id])
+  @@index([start_time])          // Faster date range searches
+  @@index([pump_id, start_time]) // Super fast graphing queries
+}
+
+// ============================================
+// 5. AUTOMATIC LOGS
+// ============================================
+model SensorLog {
+  sensor_id      Int      @id @default(autoincrement())
+  timestamp      DateTime @default(now())
+  reading_type   String
+  value          Float
+  unit           String
+  pump_id        Int?
+  pump           Pump?    @relation(fields: [pump_id], references: [pump_id])
+  tank_id        Int?
+  tank           Tank?    @relation(fields: [tank_id], references: [tank_id])
+}
+
+// ============================================
+// 6. ANALYTICS
+// ============================================
+model Prediction {
+  prediction_id    Int      @id @default(autoincrement())
+  prediction_date  DateTime
+  predicted_usage  Float
+  shortage_flag    Boolean
+  confidence_score Float?
+  created_at       DateTime @default(now())
+  pump_id          Int
+  pump             Pump     @relation(fields: [pump_id], references: [pump_id])
+}
+
+// ============================================
+// 7. CONSUMER / RESIDENT GOVERNANCE (NEW)
+// ============================================
+model Resident {
+  resident_id   Int      @id @default(autoincrement())
+  name          String
+  phone         String   @unique  // Used as Username for login
+  password_hash String
+  address       String?  // e.g., "House No. 42, Ward 3"
+  
+  village_id    Int
+  village       Village  @relation(fields: [village_id], references: [village_id])
+  
+  complaints    Complaint[]
+  created_at    DateTime @default(now())
+}
+
+model Complaint {
+  complaint_id  Int      @id @default(autoincrement())
+  category      String   // "No Water", "Dirty Water", "Leakage", "Billing"
+  description   String
+  photo_url     String?
+  status        String   @default("OPEN") // OPEN, IN_PROGRESS, RESOLVED
+  
+  created_at    DateTime @default(now())
+  resolved_at   DateTime?
+  
+  resident_id   Int
+  resident      Resident @relation(fields: [resident_id], references: [resident_id])
+  
+  // Optional: Link to specific asset if the user knows which pump is broken
+  pump_id       Int?
+  pump          Pump?    @relation(fields: [pump_id], references: [pump_id])
+}
+
+model Announcement {
+  id            Int      @id @default(autoincrement())
+  title         String   // e.g., "Water Cut on Sunday"
+  message       String
+  date_posted   DateTime @default(now())
+  
+  village_id    Int
+  village       Village  @relation(fields: [village_id], references: [village_id])
+}
 
 // ============================================
 // 8. AI & MACHINE LEARNING STORAGE

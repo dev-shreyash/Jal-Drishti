@@ -1,20 +1,61 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Login from "./pages/auth/Login";
-import Register from "./pages/auth/Register";
+import OperatorDailyLog from "./pages/dashboard/operator/OperatorDailyLog";
+import OperatorLogs from "./pages/dashboard/operator/OperatorLogs";
 
-import './App.css'
+/* ADMIN */
+import AdminDashboard from "./pages/dashboard/admin/AdminDashboard";
 
-import AdminRegister from "./pages/auth/admin/AdminRegister";
-import OperatorRegister from "./pages/auth/operator/OperatorRegister";
-import UserRegister from "./pages/auth/user/UserRegister";
+/* OPERATOR */
+import OperatorDashboard from "./pages/dashboard/operator/OperatorDashboard";
+
+/* GUARDS */
+import RequireAdmin from "./routes/RequireAdmin";
+import RequireOperator from "./routes/RequireOperator";
 
 export default function App() {
   return (
-    <>
-    <div>hello world</div>
-    </>
-  )
-}
+    <BrowserRouter>
+      <Routes>
 
-export default App
+        {/* ROOT */}
+        <Route path="/" element={<Navigate to="/auth/login" replace />} />
+
+        {/* LOGIN */}
+        <Route path="/auth/login" element={<Login />} />
+
+        {/* ADMIN */}
+        <Route
+          path="/admin/dashboard"
+          element={
+            <RequireAdmin>
+              <AdminDashboard />
+            </RequireAdmin>
+          }
+        />
+
+        {/* OPERATOR */}
+        <Route
+          path="/operator/dashboard"
+          element={
+            <RequireOperator>
+              <OperatorDashboard />
+            </RequireOperator>
+          }
+        />
+      <Route path="/operator/daily-log" element={
+  <RequireOperator>
+    <OperatorDailyLog />
+  </RequireOperator>
+} />
+
+<Route path="/operator/logs" element={
+  <RequireOperator>
+    <OperatorLogs />
+  </RequireOperator>
+} />
+
+      </Routes>
+    </BrowserRouter>
+  );
+}
