@@ -3,6 +3,118 @@ import prisma from "../db";
 import bcrypt from "bcryptjs";
 import { sign } from "hono/jwt";
 
+const ALLOWED_DOMAIN = "@panchayat.com";
+
+export const adminRegister = async (c: Context) => {
+  try {
+    const {
+      name,
+      username,
+      password,
+      email,
+      contact_number,
+      state,
+      district,
+      taluka,
+      village_name,
+    } = await c.req.json();
+
+    // 1. Basic validation
+    if (
+      !name ||
+      !username ||
+      !password ||
+      !email ||
+      !state ||
+      !district ||
+      !taluka ||
+      !village_name
+    ) {
+      return c.json(
+        { success: false, message: "All fields are required" },
+        400,
+      );
+    }
+
+    // 2. Email domain validation
+    if (!email.endsWith(ALLOWED_DOMAIN)) {
+      return c.json(
+        {
+          success: false,
+          message: "Only panchayat-issued emails are allowed",
+        },
+        400,
+      );
+    }
+
+    // 3. Find village by full hierarchy
+    const village = await prisma.village.findFirst({
+      where: {
+        state,
+        district,
+        taluka,
+        village_name,
+      },
+    });
+
+    if (!village) {
+      return c.json(
+        {
+          success: false,
+          message: "Selected village does not exist",
+        },
+        404,
+      );
+    }
+
+    // 4. Check admin username
+    const existingAdmin = await prisma.admin.findUnique({
+      where: { username },
+    });
+
+    if (existingAdmin) {
+      return c.json(
+        { success: false, message: "Admin username already exists" },
+        409,
+      );
+    }
+
+    // 5. Hash password
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    // 6. Create admin linked to village
+    const admin = await prisma.admin.create({
+      data: {
+        name,
+        username,
+        password_hash: passwordHash,
+        email,
+        contact_number,
+        village_id: village.village_id,
+      },
+    });
+
+    return c.json({
+      success: true,
+      message: "Admin registered successfully",
+      admin_id: admin.admin_id,
+      village: {
+        village_id: village.village_id,
+        village_name: village.village_name,
+        taluka: village.taluka,
+        district: village.district,
+        state: village.state,
+      },
+    });
+  } catch (error) {
+    console.error(error);
+    return c.json(
+      { success: false, message: "Admin registration failed" },
+      500,
+    );
+  }
+};
+
 export const adminLogin = async (c: Context) => {
   try {
     const { username, password } = await c.req.json();
@@ -37,7 +149,7 @@ export const adminLogin = async (c: Context) => {
       {
         admin_id: admin.admin_id,
         role: "ADMIN",
-        village_id: admin.village_id, 
+        village_id: admin.village_id,
       },
       process.env.JWT_SECRET || "jal_drishti_admin_2025"
     );
@@ -69,7 +181,7 @@ export const createAnnouncement = async (c: Context) => {
     if (!admin?.village_id) {
       return c.json(
         { success: false, message: "Admin village not found" },
-        403
+        403,
       );
     }
 
@@ -91,7 +203,7 @@ export const createAnnouncement = async (c: Context) => {
     console.error("Announcement Error:", err);
     return c.json(
       { success: false, message: "Failed to create announcement" },
-      500
+      500,
     );
   }
 };

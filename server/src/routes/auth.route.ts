@@ -25,5 +25,7 @@ authRoutes.post("/admin/addpumps", adminAuth, createPump);
 authRoutes.post("/admin/addtanks", adminAuth, createTank);
 authRoutes.get("/admin/alltanks", adminAuth, getTanks);
 authRoutes.post('/admin/announce', adminAuth, createAnnouncement);
+authRoutes.post("/admin/register", adminRegister);
+
 
 export default authRoutes;
