@@ -169,3 +169,91 @@ export const raiseComplaint = async (c: Context) => {
   }
 };
 
+export const getMyComplaints = async (c: Context) => {
+  try {
+    const residentId = c.get("resident_id");
+
+    const complaints = await prisma.complaint.findMany({
+      where: { resident_id: residentId },
+      orderBy: { created_at: "desc" },
+      include: {
+        pump: {
+          select: {
+            pump_name: true,
+          },
+        },
+      },
+    });
+
+    return c.json({
+      success: true,
+      complaints,
+    });
+  } catch (error) {
+    console.error(error);
+    return c.json(
+      { success: false, message: "Failed to fetch complaints" },
+      500
+    );
+  }
+};
+
+export const getAnnouncements = async (c: Context) => {
+  try {
+    const villageId = c.get("village_id");
+
+    const announcements = await prisma.announcement.findMany({
+      where: { village_id: villageId },
+      orderBy: { date_posted: "desc" },
+    });
+
+    return c.json({
+      success: true,
+      announcements,
+    });
+  } catch (error) {
+    console.error(error);
+    return c.json(
+      { success: false, message: "Failed to fetch announcements" },
+      500
+    );
+  }
+};
+
+export const getWaterStatus = async (c: Context) => {
+  try {
+    const villageId = c.get("village_id");
+
+    const latestPrediction = await prisma.prediction.findFirst({
+      where: {
+        pump: {
+          village_id: villageId,
+        },
+      },
+      orderBy: { prediction_date: "desc" },
+    });
+
+    if (!latestPrediction) {
+      return c.json({
+        success: true,
+        status: "UNKNOWN",
+        message: "No data available",
+      });
+    }
+
+    return c.json({
+      success: true,
+      status: latestPrediction.shortage_flag ? "SHORTAGE" : "SAFE",
+      confidence: latestPrediction.confidence_score,
+    });
+  } catch (error) {
+    console.error(error);
+    return c.json(
+      { success: false, message: "Failed to fetch water status" },
+      500
+    );
+  }
+};
+
+
+

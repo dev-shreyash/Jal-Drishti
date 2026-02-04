@@ -1,12 +1,3 @@
-/*
-  Warnings:
-
-  - You are about to drop the `user` table. If the table is not empty, all the data it contains will be lost.
-
-*/
--- DropTable
-DROP TABLE `user`;
-
 -- CreateTable
 CREATE TABLE `Village` (
     `village_id` INTEGER NOT NULL AUTO_INCREMENT,
@@ -99,6 +90,8 @@ CREATE TABLE `DailyLog` (
     `operator_id` INTEGER NOT NULL,
     `pump_id` INTEGER NOT NULL,
 
+    INDEX `DailyLog_start_time_idx`(`start_time`),
+    INDEX `DailyLog_pump_id_start_time_idx`(`pump_id`, `start_time`),
     PRIMARY KEY (`log_id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -168,6 +161,38 @@ CREATE TABLE `Announcement` (
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
+-- CreateTable
+CREATE TABLE `AiModel` (
+    `model_id` INTEGER NOT NULL AUTO_INCREMENT,
+    `trained_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `algorithm` VARCHAR(191) NOT NULL DEFAULT 'ARIMA',
+    `model_weights` JSON NOT NULL,
+    `village_id` INTEGER NOT NULL,
+
+    PRIMARY KEY (`model_id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `ChangeRequest` (
+    `request_id` INTEGER NOT NULL AUTO_INCREMENT,
+    `request_type` VARCHAR(191) NOT NULL,
+    `status` VARCHAR(191) NOT NULL DEFAULT 'PENDING',
+    `operator_id` INTEGER NOT NULL,
+    `pump_id` INTEGER NULL,
+    `req_pump_name` VARCHAR(191) NULL,
+    `req_model_number` VARCHAR(191) NULL,
+    `req_latitude` DOUBLE NULL,
+    `req_longitude` DOUBLE NULL,
+    `req_flow_rate` INTEGER NULL,
+    `req_is_smart` BOOLEAN NULL,
+    `reason` VARCHAR(191) NULL,
+    `admin_remark` VARCHAR(191) NULL,
+    `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `resolved_at` DATETIME(3) NULL,
+
+    PRIMARY KEY (`request_id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
 -- AddForeignKey
 ALTER TABLE `Admin` ADD CONSTRAINT `Admin_village_id_fkey` FOREIGN KEY (`village_id`) REFERENCES `Village`(`village_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
@@ -206,3 +231,12 @@ ALTER TABLE `Complaint` ADD CONSTRAINT `Complaint_pump_id_fkey` FOREIGN KEY (`pu
 
 -- AddForeignKey
 ALTER TABLE `Announcement` ADD CONSTRAINT `Announcement_village_id_fkey` FOREIGN KEY (`village_id`) REFERENCES `Village`(`village_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `AiModel` ADD CONSTRAINT `AiModel_village_id_fkey` FOREIGN KEY (`village_id`) REFERENCES `Village`(`village_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `ChangeRequest` ADD CONSTRAINT `ChangeRequest_operator_id_fkey` FOREIGN KEY (`operator_id`) REFERENCES `Operator`(`operator_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `ChangeRequest` ADD CONSTRAINT `ChangeRequest_pump_id_fkey` FOREIGN KEY (`pump_id`) REFERENCES `Pump`(`pump_id`) ON DELETE SET NULL ON UPDATE CASCADE;
