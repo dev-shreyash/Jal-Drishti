@@ -150,7 +150,6 @@ export const raiseComplaint = async (c: Context) => {
         photo_url: photo_url ?? null,
         pump_id: pump_id ?? null,
 
-        // ✅ ONLY fields that exist in schema
         resident_id: resident.resident_id,
       },
     });
