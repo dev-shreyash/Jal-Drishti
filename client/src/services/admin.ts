@@ -97,3 +97,8 @@ export const getSystemAlerts = async (): Promise<SystemAlert[]> => {
     return [];
   }
 };
+
+// export const getAdminStats = async () => {
+//   const response = await api.get("/admin/dashboard/stats");
+//   return response.data; // This now contains real DB counts
+// };

@@ -127,6 +127,11 @@ export const adminLogin = async (c: Context) => {
     // 1. Find Admin
     const admin = await prisma.admin.findUnique({
       where: { username },
+      include: { 
+        village: {
+          select: { village_name: true } // Only fetch the name to keep response light
+        } 
+      },
     });
     console.log(" Admin Found:", admin ? "YES" : "NO"); // LOG 2
 
@@ -150,6 +155,7 @@ export const adminLogin = async (c: Context) => {
         admin_id: admin.admin_id,
         role: "ADMIN",
         village_id: admin.village_id,
+        village_name: admin.village?.village_name // Also add to token payload if needed
       },
       process.env.JWT_SECRET || "jal_drishti_admin_2025"
     );
@@ -159,6 +165,7 @@ export const adminLogin = async (c: Context) => {
     return c.json({
       message: "Login successful",
       token,
+      village_name: admin.village?.village_name, 
       admin: {
         id: admin.admin_id,
         name: admin.name,

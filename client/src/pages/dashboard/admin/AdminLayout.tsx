@@ -2,18 +2,23 @@
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { 
   Home, 
-  LayoutGrid, // Unified Icon
+  LayoutGrid, 
   Users, 
   AlertCircle, 
   BarChart3, 
   LogOut, 
   Bell, 
-  Droplet
+  Droplet,
+  MapPin // New Icon for village display
 } from "lucide-react";
 
 export default function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
+
+  // 👇 GET VILLAGE NAME FROM LOCALSTORAGE/TOKEN
+  // Assuming you saved the village name during login in localStorage
+  const villageName = localStorage.getItem("village_name") || "Village Admin";
 
   const logout = () => {
     localStorage.clear();
@@ -27,8 +32,6 @@ export default function AdminLayout() {
       
       {/* --- SIDEBAR (Fixed) --- */}
       <aside className="w-64 bg-white border-r border-gray-200 hidden lg:flex flex-col fixed h-full z-10">
-        
-        {/* Header */}
         <div className="p-6 border-b border-gray-100 flex items-center space-x-3">
           <div className="bg-blue-600 p-2 rounded-lg">
             <Droplet className="h-6 w-6 text-white" />
@@ -36,48 +39,39 @@ export default function AdminLayout() {
           <span className="text-xl font-bold text-gray-800">Jal-Drishti</span>
         </div>
 
-        {/* Navigation Items */}
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-          
           <NavItem 
             icon={Home} 
             label="Dashboard" 
             active={location.pathname === "/admin/dashboard"} 
             onClick={() => navigate("/admin/dashboard")} 
           />
-
-          {/* 👇 UNIFIED ASSETS LINK */}
           <NavItem 
             icon={LayoutGrid} 
             label="Asset Inventory" 
             active={isActive("/admin/assets")} 
             onClick={() => navigate("/admin/assets")} 
           />
-
           <NavItem 
             icon={Users} 
             label="Field Operators" 
             active={isActive("/admin/operators")} 
             onClick={() => navigate("/admin/operators")} 
           />
-
           <NavItem 
             icon={AlertCircle} 
             label="Complaints & Alerts" 
             active={isActive("/admin/complaints")} 
             onClick={() => navigate("/admin/complaints")} 
           />
-
           <NavItem 
             icon={BarChart3} 
             label="Reports" 
             active={isActive("/admin/reports")} 
-            onClick={() => {}} // Placeholder
+            onClick={() => {}} 
           />
-
         </nav>
 
-        {/* Sidebar Footer */}
         <div className="p-4 border-t border-gray-100">
           <div className="bg-blue-50 rounded-xl p-4">
             <h4 className="text-sm font-semibold text-blue-900 mb-1">
@@ -96,15 +90,23 @@ export default function AdminLayout() {
         
         {/* Top Header */}
         <header className="bg-white border-b border-gray-200 sticky top-0 z-20 px-8 py-4 flex items-center justify-between">
-            
-          <h2 className="text-2xl font-bold text-gray-800">
-            Admin Portal
-          </h2>
+          
+          <div className="flex items-center space-x-2">
+            {/* 👇 VILLAGE NAME DISPLAY */}
+            <div className="flex items-center bg-gray-100 px-3 py-1.5 rounded-full border border-gray-200 mr-4">
+               <MapPin className="h-4 w-4 text-blue-600 mr-2" />
+               <span className="text-sm font-bold text-gray-600 uppercase tracking-tight">
+                 {villageName}
+               </span>
+            </div>
+            <h2 className="text-2xl font-bold text-gray-800">
+              Admin Portal
+            </h2>
+          </div>
 
           <div className="flex items-center space-x-4">
             <button className="p-2 text-gray-500 hover:bg-gray-100 rounded-full relative">
               <Bell className="h-5 w-5" />
-              {/* Notification Dot Example */}
               <span className="absolute top-2 right-2 h-2 w-2 bg-red-500 rounded-full border border-white"></span>
             </button>
             <div className="h-8 w-px bg-gray-200"></div>
@@ -118,7 +120,6 @@ export default function AdminLayout() {
           </div>
         </header>
 
-        {/* DYNAMIC PAGE CONTENT */}
         <main className="flex-1 p-8 bg-gradient-to-b from-blue-50 to-gray-50">
           <Outlet />
         </main>
@@ -127,7 +128,6 @@ export default function AdminLayout() {
   );
 }
 
-// Helper Component for Sidebar Links
 function NavItem({ icon: Icon, label, active, onClick }: any) {
   return (
     <button

@@ -177,3 +177,60 @@ export const getAiPredictions = async (c: Context) => {
     return c.json({ message: "Prediction Engine Failed", error: String(error) }, 500);
   }
 };
+
+
+
+
+export const getAiInsights = async (c: Context) => {
+  try {
+    const payload = c.get("jwtPayload");
+    const adminId = payload?.id || payload?.admin_id;
+
+    // 1. Get Admin Context
+    const admin = await prisma.admin.findUnique({
+      where: { admin_id: Number(adminId) },
+      select: { village_id: true }
+    });
+
+    if (!admin?.village_id) {
+      return c.json({ error: "Unauthorized" }, 403);
+    }
+
+    // 2. Fetch Historical Logs using CORRECT field names
+    const logs = await prisma.dailyLog.findMany({
+      where: { 
+        pump: { village_id: admin.village_id } 
+      },
+      orderBy: { created_at: 'asc' }, // Verified from your error log
+      take: 30,
+      select: {
+        created_at: true, // Verified field
+        usage_liters: true // Verified field (replaces total_flow_liters)
+      }
+    });
+
+    // 3. Prepare data for WaterForecaster
+    const history = logs.map(l => ({
+      date: new Date(l.created_at),
+      usage: Number(l.usage_liters)
+    }));
+
+    // 4. Safety Check: Always return an ARRAY
+    // If data is insufficient, return an empty array [] so frontend .length check passes
+    if (history.length < 3) {
+      return c.json([]); 
+    }
+
+    const forecaster = new WaterForecaster();
+    const predictions = forecaster.predict(history, 7);
+
+    // 5. RETURN ARRAY DIRECTLY
+    // This ensures your frontend 'aiData' variable is an array, not an object
+    return c.json(predictions);
+
+  } catch (error) {
+    console.error("AI Insights Error:", error);
+    // Return empty array on crash to prevent frontend "White Screen of Death"
+    return c.json([]); 
+  }
+};

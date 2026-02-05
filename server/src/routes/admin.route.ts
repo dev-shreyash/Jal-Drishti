@@ -7,6 +7,7 @@ import { adminAuth } from "../middleware/auth.middleware";
 import { getPumps, createPump, updatePump, deletePump } from "../controllers/pump.controller";
 import { getTanks, createTank, updateTank, deleteTank } from "../controllers/tank.controller";
 import { getOperators, createOperator, updateOperator, deleteOperator } from "../controllers/operator.controller";
+import { getAiInsights, getDashboardStats } from "../controllers/admin.dashboard.controller";
 
 const adminRoutes = new Hono();
 
@@ -35,6 +36,8 @@ adminRoutes.post("/villages", async (c: Context) => {
 });
 
 // ... (Keep PUT/DELETE village logic if you have it) ...
+adminRoutes.get("/dashboard/stats", getDashboardStats);
+adminRoutes.get("/dashboard/ai-insights", getAiInsights);
 
 /* ---------------- 👇 NEW ROUTES: ASSETS (PUMPS) ---------------- */
 adminRoutes.get("/pumps", getPumps);

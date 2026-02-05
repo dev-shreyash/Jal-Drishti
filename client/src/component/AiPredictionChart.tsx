@@ -1,47 +1,32 @@
-import { useEffect, useState } from "react";
 import { TrendingUp, Sparkles, Calendar, AlertTriangle } from "lucide-react";
-import api from "../services/api";
 
+// 1. DEFINE THE DATA INTERFACE
 interface Prediction {
   date: string;
   day: string;
-  displayDate: string; // New field from backend
+  displayDate: string;
   predicted_usage: number;
   reason: string;
-  isAlert: boolean;    // New field from backend
+  isAlert: boolean;
 }
 
-export default function AiPredictionChart() {
-  const [data, setData] = useState<Prediction[]>([]);
-  const [loading, setLoading] = useState(true);
+// 2. DEFINE THE PROPS INTERFACE
+interface AiPredictionChartProps {
+  data: Prediction[];
+}
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+// 3. ACCEPT DATA AS PROP
+export default function AiPredictionChart({ data }: AiPredictionChartProps) {
+  
+  // No need for local useEffect or fetchData anymore!
+  // The Dashboard handles the loading state.
 
-  const fetchData = async () => {
-    try {
-      const response = await api.get("/admin/dashboard/ai-predict-usage");
-      if (response.data.success) {
-        setData(response.data.predictions);
-      }
-    } catch (err) {
-      console.error("AI Fetch Error:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (loading) return (
-    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 mt-6 animate-pulse">
-      <div className="h-4 bg-gray-200 rounded w-1/3 mb-4"></div>
-      <div className="space-y-3">
-        {[1,2,3].map(i => <div key={i} className="h-8 bg-gray-100 rounded-full w-full"></div>)}
-      </div>
+  if (!data || data.length === 0) return (
+    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mt-6 text-center text-gray-400">
+      <Sparkles className="h-8 w-8 mx-auto mb-2 opacity-20" />
+      <p className="text-sm">Historical data is required to generate AI forecasts.</p>
     </div>
   );
-
-  if (data.length === 0) return null;
 
   // Calculate max for bar scaling
   const maxUsage = Math.max(...data.map(d => d.predicted_usage)) || 1;
@@ -101,9 +86,9 @@ export default function AiPredictionChart() {
             </div>
             
             <div className="flex items-center space-x-3 h-8">
-              {/* The Bar Track */}
+              {/* Bar Track */}
               <div className="flex-1 bg-gray-100 rounded-lg h-2.5 overflow-hidden">
-                {/* The Filled Bar */}
+                {/* Filled Bar */}
                 <div 
                   className={`h-full rounded-lg transition-all duration-1000 ease-out relative ${
                     day.isAlert ? "bg-amber-500" : 
@@ -114,7 +99,7 @@ export default function AiPredictionChart() {
                 </div>
               </div>
               
-              {/* The Number */}
+              {/* Number */}
               <span className="text-xs font-bold text-gray-700 w-16 text-right tabular-nums">
                 {day.predicted_usage.toLocaleString()} L
               </span>
@@ -126,7 +111,7 @@ export default function AiPredictionChart() {
       <div className="mt-5 pt-4 border-t border-gray-50 text-center">
         <p className="text-xs text-gray-400 flex items-center justify-center gap-1">
           <Sparkles className="h-3 w-3" />
-          Forecast generated based on 90 days of village usage history.
+          Forecast generated based on historical village usage.
         </p>
       </div>
     </div>

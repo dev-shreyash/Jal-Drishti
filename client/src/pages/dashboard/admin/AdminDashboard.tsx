@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { getAdminStats } from "../../../services/admin";
 import { useNavigate } from "react-router-dom";
+import api from "../../../services/api";
 import {
   Users,
   Droplet,
@@ -22,13 +23,13 @@ interface DashboardData {
   alerts: number;
 }
 
-interface AiAlert {
-  pumpId: number;
-  name: string;
-  healthScore: number;
-  status: "At Risk" | "Critical";
-  predictedFailure: string;
-  riskFactor: string;
+interface AiForecastData {
+  date: string;
+  day: string;
+  displayDate: string; 
+  predicted_usage: number;
+  reason: string;
+  isAlert: boolean;
 }
 
 interface StatCardProps {
@@ -58,7 +59,6 @@ interface HealthItemProps {
 export default function AdminDashboard() {
   const navigate = useNavigate();
 
-  // Initial State
   const [data, setData] = useState<DashboardData>({
     villageName: "Loading...",
     population: 0,
@@ -68,7 +68,7 @@ export default function AdminDashboard() {
     alerts: 0,
   });
 
-  const [aiData, setAiData] = useState<AiAlert[]>([]);
+  const [aiData, setAiData] = useState<AiForecastData[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -78,21 +78,15 @@ export default function AdminDashboard() {
   const loadStats = async () => {
     setLoading(true);
     try {
-      // 1. Fetch Standard Stats
       const result = await getAdminStats();
       setData(result);
 
-      // 2. Fetch AI Insights
-      const token = localStorage.getItem("token");
-      // Note: Ideally move this fetch to a service file like api.ts
-      const aiRes = await fetch("http://localhost:3000/admin/dashboard/ai-insights", {
-        headers: { "Authorization": `Bearer ${token}` }
-      });
-      const aiJson = await aiRes.json();
-      if (aiJson.success) setAiData(aiJson.alerts);
+      const aiRes = await api.get("/admin/dashboard/ai-insights");
+      setAiData(Array.isArray(aiRes.data) ? aiRes.data : []);
 
     } catch (error) {
       console.error("Failed to load stats:", error);
+      setAiData([]);
     } finally {
       setLoading(false);
     }
@@ -138,7 +132,7 @@ export default function AdminDashboard() {
         
         {/* LEFT COLUMN: AI & ACTIONS */}
         <div className="lg:col-span-2 space-y-8">
-           
+            
            {/* --- AI INSIGHTS --- */}
            <div className="bg-white rounded-xl shadow-sm border border-purple-100 p-6 relative overflow-hidden">
              <div className="absolute top-0 right-0 w-64 h-64 bg-purple-50 rounded-full blur-3xl -z-10 opacity-50"></div>
@@ -153,32 +147,31 @@ export default function AdminDashboard() {
                </span>
              </div>
 
-             {aiData.length === 0 ? (
+             {aiData.filter(d => d.isAlert).length === 0 ? (
                <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-lg border border-dashed border-gray-200">
                  <Sparkles className="h-8 w-8 mx-auto text-gray-300 mb-2" />
                  <p>System Optimal. No anomalies detected by AI.</p>
                </div>
              ) : (
                <div className="space-y-4">
-                 {aiData.map((alert) => (
-                   <div key={alert.pumpId} className="flex items-center justify-between p-4 bg-white border border-l-4 border-l-red-500 border-gray-100 rounded-r-lg shadow-sm hover:shadow-md transition-shadow">
+                 {aiData.filter(d => d.isAlert).map((alert, idx) => (
+                   <div key={idx} className="flex items-center justify-between p-4 bg-white border border-l-4 border-l-red-500 border-gray-100 rounded-r-lg shadow-sm hover:shadow-md transition-shadow">
                      <div className="flex items-start space-x-4">
                        <div className="p-2 bg-red-50 text-red-600 rounded-full">
                          <Zap className="h-5 w-5" />
                        </div>
                        <div>
-                         <h4 className="font-semibold text-gray-900">{alert.name}</h4>
-                         <p className="text-sm text-red-600 font-medium">{alert.riskFactor}</p>
+                         <h4 className="font-semibold text-gray-900">High Usage Alert</h4>
+                         <p className="text-sm text-red-600 font-medium">{alert.displayDate} ({alert.day})</p>
                          <p className="text-xs text-gray-500 mt-1">
-                           Failure Probability: <span className="font-bold">{(100 - alert.healthScore)}%</span>
+                           Predicted Usage: <span className="font-bold">{alert.predicted_usage} L</span>
                          </p>
                        </div>
                      </div>
                      <div className="text-right">
                        <span className="inline-block px-3 py-1 bg-red-100 text-red-700 text-xs font-bold rounded-full mb-1">
-                         {alert.status}
+                         Critical
                        </span>
-                       <p className="text-xs text-gray-500">Est. Failure: {alert.predictedFailure}</p>
                        <button className="mt-2 text-xs text-blue-600 font-medium hover:underline">
                          Schedule Maintenance
                        </button>
@@ -190,9 +183,9 @@ export default function AdminDashboard() {
            </div>
 
            {/* --- AI FORECAST CHART --- */}
-           <AiPredictionChart />
+           <AiPredictionChart data={aiData} />
 
-           {/* --- QUICK ACTIONS --- */}
+           {/* --- OLD PREVIOUS QUICK MANAGEMENT SECTION --- */}
            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
              <h3 className="text-lg font-bold text-gray-900 mb-4">
                Quick Management
@@ -260,7 +253,7 @@ export default function AdminDashboard() {
   );
 }
 
-// --- SUB COMPONENTS (Kept local for simplicity, or move to separate files) ---
+// --- SUB COMPONENTS ---
 
 function StatCard({ title, value, icon: Icon, color, trend, alert }: StatCardProps) {
   const colors = {
