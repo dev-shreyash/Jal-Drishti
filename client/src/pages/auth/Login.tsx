@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Droplet, Lock, User, ArrowRight } from 'lucide-react';
+import { AxiosError } from 'axios';
 import api from '../../services/api'; // Import your new axios instance
 import './Login.css';
 
@@ -28,7 +29,7 @@ export default function Login() {
 
       // Axios handles the stringify and the response parsing automatically
       const response = await api.post(endpoint, { username, password });
-      
+      console.log(response)
       const data = response.data;
 
       // 4. Store Data
@@ -44,10 +45,11 @@ export default function Login() {
         navigate('/admin/dashboard');
       }
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Login Error:", err);
       // Axios puts the server error response inside err.response.data
-      const message = err.response?.data?.error || err.response?.data?.message || 'Login failed';
+      const axiosError = err as AxiosError<{ error?: string; message?: string }>;
+      const message = axiosError.response?.data?.error || axiosError.response?.data?.message || 'Login failed';
       setError(message);
     } finally {
       setLoading(false);

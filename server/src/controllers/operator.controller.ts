@@ -1,6 +1,6 @@
 import { Context } from "hono";
 import prisma from "../db";
-import * as bcrypt from "bcrypt";
+import * as bcrypt from "bcryptjs";
 
 // --- GET ALL OPERATORS ---
 export const getOperators = async (c: Context) => {
@@ -119,3 +119,5 @@ export const deleteOperator = async (c: Context) => {
     return c.json({ error: "Delete failed" }, 500);
   }
 };
+
+
