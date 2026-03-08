@@ -3,9 +3,13 @@ import { prisma } from "../lib/prisma";
 import bcrypt from "bcryptjs";
 
 export const registerOperator = async (c: Context) => {
+  
   try {
+    console.log("Registering operator")
     const { name, phone, username, password, village_id } =
       await c.req.json();
+
+      console.log("api: "+name, phone, username, password, village_id)
 
     
     if (!name || !phone || !username || !password || !village_id) {
@@ -39,6 +43,8 @@ export const registerOperator = async (c: Context) => {
         village_id,
       },
     });
+
+    console.log(operator)
 
     return c.json(
       {

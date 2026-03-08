@@ -4,7 +4,7 @@ import { WaterForecaster } from "../ai/prediction";
 
 export const getDashboardStats = async (c: Context) => {
   try {
-    const user = c.get("jwtPayload");
+    const user = c.get("jwtPayload") as { village_id?: number };
     const villageId = user?.village_id;
 
     if (!villageId) {
@@ -54,7 +54,7 @@ export const getDashboardStats = async (c: Context) => {
 
 export const dailyUsageSummary = async (c: Context) => {
   try {
-    const user = c.get("jwtPayload");
+    const user = c.get("jwtPayload") as { village_id?: number };
     const villageId = user?.village_id;
 
     if (!villageId) {
@@ -110,7 +110,7 @@ export const dailyUsageSummary = async (c: Context) => {
 
 export const getAiPredictions = async (c: Context) => {
   try {
-    const user = c.get("jwtPayload");
+    const user = c.get("jwtPayload") as { village_id?: number };
     const villageId = user?.village_id;
 
     if (!villageId) return c.json({ message: "Unauthorized" }, 401);
@@ -183,7 +183,7 @@ export const getAiPredictions = async (c: Context) => {
 
 export const getAiInsights = async (c: Context) => {
   try {
-    const payload = c.get("jwtPayload");
+    const payload = c.get("jwtPayload") as { id?: number; admin_id?: number };
     const adminId = payload?.id || payload?.admin_id;
 
     // 1. Get Admin Context

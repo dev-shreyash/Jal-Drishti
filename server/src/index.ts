@@ -8,7 +8,7 @@ import adminDashboardRoutes from "./routes/admin.dashboard.routes";
 import residentRoutes from "./routes/resident.route";
 import simulationRoutes from "./routes/simulator.routes";
 import adminRoutes from "./routes/admin.route";
-import { operatorLogin } from "./controllers/operator.auth.controller";
+import { operatorLogin } from "./controllers/Auth/operator.auth.controller";
 import operatorAuth from "./routes/operatorAuth.route";
 
 const app = new Hono();
@@ -29,8 +29,8 @@ origin: "*", // <--- ALLOW EVERYONE (Fixes the blocking)    allowMethods: ["POST
 app.get("/", (c) => c.text("API running"));
 
 // admin routes
-app.route("/auth/admin", authRoutes);
-//app.route("/admin", adminOperatorRoutes);
+app.route("/auth", authRoutes);
+app.route("/admin/operator", adminOperatorRoutes);
 app.route("/admin", adminRoutes);
 app.route("/admin/dashboard", adminDashboardRoutes);
 

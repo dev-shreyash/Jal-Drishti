@@ -9,7 +9,9 @@ export const getOperators = async () => {
 
 // Create new operator
 export const createOperator = async (data: any) => {
-  const response = await api.post("/admin/operators", data);
+  console.log(data)
+  const response = await api.post("/admin/operator/operators", data);
+  console.log(response)
   return response.data;
 };
 

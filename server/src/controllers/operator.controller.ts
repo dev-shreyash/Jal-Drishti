@@ -2,10 +2,15 @@ import { Context } from "hono";
 import prisma from "../db";
 import * as bcrypt from "bcryptjs";
 
+type JwtPayload = {
+  id?: number;
+  admin_id?: number;
+};
+
 // --- GET ALL OPERATORS ---
 export const getOperators = async (c: Context) => {
   try {
-    const payload = c.get("jwtPayload");
+    const payload = c.get("jwtPayload") as JwtPayload;
     
     // 👇 FIX: Support both id and admin_id from token
     const adminId = payload?.id || payload?.admin_id;
@@ -44,7 +49,7 @@ export const getOperators = async (c: Context) => {
 export const createOperator = async (c: Context) => {
   try {
     const body = await c.req.json();
-    const payload = c.get("jwtPayload");
+    const payload = c.get("jwtPayload") as JwtPayload;
     
     // 👇 FIX: Support both id and admin_id
     const adminId = payload?.id || payload?.admin_id;

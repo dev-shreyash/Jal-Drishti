@@ -4,7 +4,7 @@ import {
   createAnnouncement,
   getVillagesForRegister, 
   // <--- Import this
-} from "../controllers/auth.controller";
+} from "../controllers/Auth/auth.controller";
 import { getVillageOptions } from "../controllers/village.controller"; // <--- Import this
 import { createPump } from "../controllers/pump.controller";
 import { adminAuth } from "../middleware/auth.middleware";

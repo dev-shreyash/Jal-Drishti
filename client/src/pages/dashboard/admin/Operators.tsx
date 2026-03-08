@@ -57,11 +57,12 @@ export default function Operators() {
   };
 
   useEffect(() => {
-    load(false);
+   
   }, []);
 
   // 2. Submit Logic
   const handleSubmit = async (e: React.FormEvent) => {
+    console.log("cliked")
     e.preventDefault();
     try {
       const payload = {
@@ -71,13 +72,16 @@ export default function Operators() {
         // Backend will assign village_id from the Admin's token automatically
         ...(form.password ? { password: form.password } : {})
       };
+      console.log(payload)
 
       if (editMode && selectedId) {
         await updateOperator(selectedId, payload);
+        console.log(updateOperator)
         handleClose();
         load(true);
       } else {
         await createOperator(payload);
+        console.log(createOperator)
         setSuccessCreds({ user: form.username, pass: form.password || "" });
         load(true); 
       }

@@ -1,5 +1,5 @@
 import { Context } from "hono";
-import prisma from "../db"; 
+import prisma from "../../db"; 
 import bcrypt from "bcryptjs";
 import { sign } from "hono/jwt";
 
