@@ -3,30 +3,42 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"
-  url      = env("DATABASE_URL")
+  provider = "postgresql"
 }
 
 
+// --- Enums (Better type safety in Postgres) ---
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ComplaintStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+}
 
 model Village {
-  village_id     Int      @id @default(autoincrement())
-  village_name   String
-  taluka         String
-  district       String
-  state          String
-  pincode        String
-  population     Int?
-  created_at     DateTime @default(now())
+  village_id   Int      @id @default(autoincrement())
+  village_name String
+  taluka       String
+  district     String
+  state        String
+  pincode      String
+  population   Int?
+  created_at   DateTime @default(now())
 
   // Relationships
-  admins         Admin[]
-  operators      Operator[]
-  residents      Resident[]
-  pumps          Pump[]
-  tanks          Tank[]
-  announcements  Announcement[]
-  ai_models      AiModel[]
+  admins        Admin[]
+  operators     Operator[]
+  residents     Resident[]
+  pumps         Pump[]
+  tanks         Tank[]
+  announcements Announcement[]
+  ai_models     AiModel[]
 }
 
 model Admin {
@@ -39,58 +51,58 @@ model Admin {
   village_id     Int
   created_at     DateTime @default(now())
 
-  village        Village @relation(fields: [village_id], references: [village_id])
+  village Village @relation(fields: [village_id], references: [village_id])
 }
 
 model Operator {
-  operator_id    Int      @id @default(autoincrement())
-  name           String
-  phone          String
-  username       String   @unique
-  password_hash  String
-  is_active      Boolean  @default(true)
-  village_id     Int
-  created_at     DateTime @default(now())
+  operator_id   Int      @id @default(autoincrement())
+  name          String
+  phone         String
+  username      String   @unique
+  password_hash String
+  is_active     Boolean  @default(true)
+  village_id    Int
+  created_at    DateTime @default(now())
 
-  village        Village @relation(fields: [village_id], references: [village_id])
-  logs           DailyLog[]
+  village         Village         @relation(fields: [village_id], references: [village_id])
+  logs            DailyLog[]
   change_requests ChangeRequest[]
 }
 
 model Pump {
-  pump_id           Int      @id @default(autoincrement())
+  pump_id           Int       @id @default(autoincrement())
   pump_name         String
   model_number      String?
   installation_date DateTime?
   last_maintained   DateTime?
-  qr_code           String   @unique
+  qr_code           String    @unique
   latitude          Float
   longitude         Float
   flow_rate_lph     Int
-  is_smart_pump     Boolean  @default(false)
+  is_smart_pump     Boolean   @default(false)
   village_id        Int
 
-  village           Village @relation(fields: [village_id], references: [village_id])
-  logs              DailyLog[]
-  sensor_readings   SensorLog[]
-  predictions       Prediction[]
-  complaints        Complaint[]
-  change_requests   ChangeRequest[]
+  village         Village         @relation(fields: [village_id], references: [village_id])
+  logs            DailyLog[]
+  sensor_readings SensorLog[]
+  predictions     Prediction[]
+  complaints      Complaint[]
+  change_requests ChangeRequest[]
 }
 
 model Tank {
-  tank_id           Int      @id @default(autoincrement())
+  tank_id           Int       @id @default(autoincrement())
   tank_name         String
   capacity_liters   Int
   material_type     String?
   last_cleaned_date DateTime?
   latitude          Float?
   longitude         Float?
-  is_smart_tank     Boolean  @default(false)
+  is_smart_tank     Boolean   @default(false)
   village_id        Int
 
-  village           Village @relation(fields: [village_id], references: [village_id])
-  sensor_readings   SensorLog[]
+  village         Village     @relation(fields: [village_id], references: [village_id])
+  sensor_readings SensorLog[]
 }
 
 model DailyLog {
@@ -107,8 +119,8 @@ model DailyLog {
   operator_id    Int
   pump_id        Int
 
-  operator       Operator @relation(fields: [operator_id], references: [operator_id])
-  pump           Pump     @relation(fields: [pump_id], references: [pump_id])
+  operator Operator @relation(fields: [operator_id], references: [operator_id])
+  pump     Pump     @relation(fields: [pump_id], references: [pump_id])
 
   @@index([start_time])
   @@index([pump_id, start_time])
@@ -123,8 +135,8 @@ model SensorLog {
   pump_id      Int?
   tank_id      Int?
 
-  pump         Pump? @relation(fields: [pump_id], references: [pump_id])
-  tank         Tank? @relation(fields: [tank_id], references: [tank_id])
+  pump Pump? @relation(fields: [pump_id], references: [pump_id])
+  tank Tank? @relation(fields: [tank_id], references: [tank_id])
 }
 
 model Prediction {
@@ -136,61 +148,61 @@ model Prediction {
   created_at       DateTime @default(now())
   pump_id          Int
 
-  pump             Pump @relation(fields: [pump_id], references: [pump_id])
+  pump Pump @relation(fields: [pump_id], references: [pump_id])
 }
 
 model Resident {
-  resident_id  Int      @id @default(autoincrement())
-  name         String
-  phone        String   @unique
+  resident_id   Int      @id @default(autoincrement())
+  name          String
+  phone         String   @unique
   password_hash String
-  address      String?
-  village_id   Int
-  created_at   DateTime @default(now())
+  address       String?
+  village_id    Int
+  created_at    DateTime @default(now())
 
-  village      Village @relation(fields: [village_id], references: [village_id])
-  complaints   Complaint[]
+  village    Village     @relation(fields: [village_id], references: [village_id])
+  complaints Complaint[]
 }
 
 model Complaint {
-  complaint_id Int      @id @default(autoincrement())
+  complaint_id Int             @id @default(autoincrement())
   category     String
   description  String
   photo_url    String?
-  status       String   @default("OPEN")
-  created_at   DateTime @default(now())
+  status       ComplaintStatus @default(OPEN) // Uses Enum
+  created_at   DateTime        @default(now())
   resolved_at  DateTime?
   resident_id  Int
   pump_id      Int?
 
-  resident     Resident @relation(fields: [resident_id], references: [resident_id])
-  pump         Pump?    @relation(fields: [pump_id], references: [pump_id])
+  resident Resident @relation(fields: [resident_id], references: [resident_id])
+  pump     Pump?    @relation(fields: [pump_id], references: [pump_id])
 }
 
 model Announcement {
-  id         Int      @id @default(autoincrement())
-  title      String
-  message    String
+  id          Int      @id @default(autoincrement())
+  title       String
+  message     String
   date_posted DateTime @default(now())
-  village_id Int
+  village_id  Int
 
-  village    Village @relation(fields: [village_id], references: [village_id])
+  village Village @relation(fields: [village_id], references: [village_id])
 }
 
 model AiModel {
   model_id      Int      @id @default(autoincrement())
   trained_at    DateTime @default(now())
   algorithm     String   @default("ARIMA")
-  model_weights Json
+  model_weights Json // Postgres automatically uses JSONB for efficiency
   village_id    Int
 
-  village       Village @relation(fields: [village_id], references: [village_id])
+  village Village @relation(fields: [village_id], references: [village_id])
 }
 
 model ChangeRequest {
-  request_id       Int      @id @default(autoincrement())
+  request_id       Int           @id @default(autoincrement())
   request_type     String
-  status           String   @default("PENDING")
+  status           RequestStatus @default(PENDING) // Uses Enum
   operator_id      Int
   pump_id          Int?
   req_pump_name    String?
@@ -201,9 +213,9 @@ model ChangeRequest {
   req_is_smart     Boolean?
   reason           String?
   admin_remark     String?
-  created_at       DateTime @default(now())
+  created_at       DateTime      @default(now())
   resolved_at      DateTime?
 
-  operator         Operator @relation(fields: [operator_id], references: [operator_id])
-  pump             Pump?    @relation(fields: [pump_id], references: [pump_id])
+  operator Operator @relation(fields: [operator_id], references: [operator_id])
+  pump     Pump?    @relation(fields: [pump_id], references: [pump_id])
 }

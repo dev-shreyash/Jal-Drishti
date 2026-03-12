@@ -1,10 +1,13 @@
+//services/village.ts
+
 import api from "./api";
 
+
+// Change this from /admin/villages to /auth/villages
 export const getVillages = async () => {
-  const res = await api.get("/admin/villages");
+  const res = await api.get("/auth/villages"); 
   return res.data;
 };
-
 
 export const addVillage = async (data: any) => {
   const res = await api.post("/admin/villages", data);

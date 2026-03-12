@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { UserPlus, MapPin, Loader2, Droplets, Key } from "lucide-react"; // 1. Added Key icon
+import { UserPlus, MapPin, Loader2, Droplets, Key } from "lucide-react";
 import api from "../../services/api";
+import { getVillages } from "../../services/village";
 
 interface Village {
   village_id: number;
@@ -11,8 +12,7 @@ interface Village {
 
 export default function Register() {
   const navigate = useNavigate();
-  
-  // Form State
+
   const [formData, setFormData] = useState({
     name: "",
     username: "",
@@ -20,49 +20,64 @@ export default function Register() {
     contact_number: "",
     email: "",
     village_id: "",
-    secret_key: "", // 2. Added secret_key to state
+    secret_key: "",
   });
 
   const [villages, setVillages] = useState<Village[]>([]);
   const [loading, setLoading] = useState(false);
+  const [isFetchingVillages, setIsFetchingVillages] = useState(true);
   const [error, setError] = useState("");
 
-  // 1. Load Villages on Mount
+  // Load Villages on Mount
   useEffect(() => {
-    api.get("/auth/villages")
-      .then((res) => setVillages(res.data))
-      .catch(() => setError("Failed to load village list. Is the backend running?"));
+    let isMounted = true; // Prevents state updates on unmounted components
+    const loadInitialData = async () => {
+      try {
+        const data = await getVillages();
+        if (isMounted) {
+          // Ensure data is an array before setting state
+          setVillages(Array.isArray(data) ? data : []);
+        }
+      } catch (err) {
+        if (isMounted) {
+          setError("Unable to fetch villages. Please refresh the page.");
+        }
+      } finally {
+        if (isMounted) setIsFetchingVillages(false);
+      }
+    };
+    loadInitialData();
+    return () => { isMounted = false; };
   }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Basic validation before sending
+    if (!formData.village_id) {
+      setError("Please select a village.");
+      return;
+    }
+
     setLoading(true);
     setError("");
 
     try {
-      // Send data to backend
       const response = await api.post("/auth/register", {
         ...formData,
-        village_id: Number(formData.village_id), // Ensure number
-        // Backend handles hashing, we just send the plain data + secret key
+        village_id: Number(formData.village_id),
       });
 
       if (response.data) {
-        // Success! Redirect to Login
         navigate("/login");
       }
-    } catch (err: unknown) {
-      let errorMessage: string | undefined;
-      if (err instanceof Object && 'response' in err) {
-        const errObj = err as { response?: { data?: { message?: string } } };
-        // Note: Your admin controller returns 'message', not 'error'
-        errorMessage = errObj.response?.data?.message; 
-      }
-      setError(errorMessage || "Registration failed. Check your Secret Key.");
+    } catch (err: any) {
+      const msg = err.response?.data?.message || "Registration failed. Check your Secret Key.";
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -83,7 +98,7 @@ export default function Register() {
           <p className="text-blue-100 text-sm mt-1">Official Personnel Only</p>
         </div>
 
-        {/* Form */}
+        {/* Form Container */}
         <div className="p-8">
           {error && (
             <div className="mb-4 p-3 bg-red-50 text-red-600 text-sm rounded-lg border border-red-100">
@@ -93,31 +108,42 @@ export default function Register() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             
-            {/* Village Selector */}
+            {/* Village Selector - Fixed with Icon wrapper */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Assigned Village</label>
+              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+                Assigned Village
+              </label>
               <div className="relative">
                 <select
                   name="village_id"
                   required
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 appearance-none bg-white text-gray-700"
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 appearance-none bg-white text-gray-700 disabled:bg-gray-100"
                   value={formData.village_id}
                   onChange={handleChange}
+                  disabled={isFetchingVillages}
                 >
-                  <option value="">-- Choose Your Village --</option>
-                  {villages.map((v) => (
-                    <option key={v.village_id} value={v.village_id}>
-                      {v.village_name} ({v.district})
-                    </option>
-                  ))}
+                  {isFetchingVillages ? (
+                    <option>Loading villages...</option>
+                  ) : (
+                    <>
+                      <option value="">-- Choose Your Village --</option>
+                      {villages.map((v) => (
+                        <option key={v.village_id} value={v.village_id}>
+                          {v.village_name} ({v.district})
+                        </option>
+                      ))}
+                    </>
+                  )}
                 </select>
                 <MapPin className="absolute left-3 top-2.5 h-5 w-5 text-gray-400 pointer-events-none" />
               </div>
             </div>
 
-            {/* 3. NEW: Secret Key Input */}
+            {/* Secret Key Input */}
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Secret Key</label>
+              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+                Secret Key
+              </label>
               <div className="relative">
                 <input
                   type="password"
@@ -125,6 +151,7 @@ export default function Register() {
                   required
                   placeholder="Enter official admin code"
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:border-blue-500 outline-none text-gray-700"
+                  value={formData.secret_key}
                   onChange={handleChange}
                 />
                 <Key className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
@@ -134,22 +161,24 @@ export default function Register() {
             {/* Name & Contact */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase">Full Name</label>
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Full Name</label>
                 <input
                   type="text"
                   name="name"
                   required
-                  className="w-full p-2 border border-gray-300 rounded focus:border-blue-500 outline-none text-gray-700"
+                  className="w-full p-2 border border-gray-300 rounded-lg focus:border-blue-500 outline-none text-gray-700"
+                  value={formData.name}
                   onChange={handleChange}
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase">Phone</label>
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Phone</label>
                 <input
                   type="text"
                   name="contact_number"
                   required
-                  className="w-full p-2 border border-gray-300 rounded focus:border-blue-500 outline-none text-gray-700"
+                  className="w-full p-2 border border-gray-300 rounded-lg focus:border-blue-500 outline-none text-gray-700"
+                  value={formData.contact_number}
                   onChange={handleChange}
                 />
               </div>
@@ -157,46 +186,54 @@ export default function Register() {
 
             {/* Email */}
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase">Email Address</label>
+              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Email</label>
               <input
                 type="email"
                 name="email"
                 required
-                className="w-full p-2 border border-gray-300 rounded focus:border-blue-500 outline-none text-gray-700"
+                className="w-full p-2 border border-gray-300 rounded-lg focus:border-blue-500 outline-none text-gray-700"
+                value={formData.email}
                 onChange={handleChange}
               />
             </div>
 
             {/* Username & Password */}
-            <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase">Username</label>
-              <input
-                type="text"
-                name="username"
-                required
-                className="w-full p-2 border border-gray-300 rounded focus:border-blue-500 outline-none text-gray-700"
-                onChange={handleChange}
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase">Password</label>
-              <input
-                type="password"
-                name="password"
-                required
-                className="w-full p-2 border border-gray-300 rounded focus:border-blue-500 outline-none text-gray-700"
-                onChange={handleChange}
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Username</label>
+                <input
+                  type="text"
+                  name="username"
+                  required
+                  className="w-full p-2 border border-gray-300 rounded-lg focus:border-blue-500 outline-none text-gray-700"
+                  value={formData.username}
+                  onChange={handleChange}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Password</label>
+                <input
+                  type="password"
+                  name="password"
+                  required
+                  className="w-full p-2 border border-gray-300 rounded-lg focus:border-blue-500 outline-none text-gray-700"
+                  value={formData.password}
+                  onChange={handleChange}
+                />
+              </div>
             </div>
 
             {/* Submit Button */}
             <button
               type="submit"
-              disabled={loading}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition-all flex items-center justify-center gap-2 mt-6"
+              disabled={loading || isFetchingVillages}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition-all flex items-center justify-center gap-2 mt-6 disabled:opacity-50"
             >
-              {loading ? <Loader2 className="animate-spin h-5 w-5" /> : <UserPlus className="h-5 w-5" />}
+              {loading ? (
+                <Loader2 className="animate-spin h-5 w-5" />
+              ) : (
+                <UserPlus className="h-5 w-5" />
+              )}
               Register Admin
             </button>
           </form>

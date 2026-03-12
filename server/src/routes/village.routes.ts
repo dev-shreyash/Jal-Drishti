@@ -1,9 +1,8 @@
-import { Router } from "express";
+import { Hono } from "hono";
 import { getVillageOptions } from "../controllers/village.controller";
 
-const router = Router();
+const villageRouter = new Hono();
 
-// Route: GET http://localhost:5000/api/villages/options
-router.get("/options", getVillageOptions);
+villageRouter.get("/options", getVillageOptions);
 
-export default router;
+export default villageRouter;

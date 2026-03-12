@@ -10,7 +10,7 @@ import simulationRoutes from "./routes/simulator.routes";
 import adminRoutes from "./routes/admin.route";
 import { operatorLogin } from "./controllers/Auth/operator.auth.controller";
 import operatorAuth from "./routes/operatorAuth.route";
-
+import "dotenv/config"; 
 const app = new Hono();
 
 // --- 2. ENABLE CORS (MUST BE BEFORE ROUTES) ---
@@ -47,6 +47,10 @@ app.route("/resident", residentRoutes);
 
 
 app.route("/simulation", simulationRoutes);
+
+//village routes
+import villageRouter from "./routes/village.routes";
+app.route("/villages", villageRouter);
 
 export default {
   port: 3000,

@@ -66,6 +66,7 @@ export const adminRegister = async (c: Context) => {
         404,
       );
     }
+    console.log(village)
 
     // 4. Check admin username
     const existingAdmin = await prisma.admin.findUnique({

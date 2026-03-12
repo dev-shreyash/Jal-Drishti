@@ -1,10 +1,13 @@
-import { defineConfig } from "prisma/config";
+import { defineConfig } from '@prisma/config';
 
 export default defineConfig({
-  datasource: {
+ datasources: {
     db: {
-      provider: "mysql",
-      url: process.env.DATABASE_URL!,
+      url: process.env.DATABASE_URL,
     },
   },
+  migrations: {
+    // @ts-ignore - 
+    directUrl: process.env.DIRECT_URL,
+  }
 });

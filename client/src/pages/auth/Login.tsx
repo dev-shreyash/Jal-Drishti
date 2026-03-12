@@ -129,7 +129,14 @@ export default function Login() {
             >
               Switch to {isOperator ? 'Admin' : 'Operator'} Login
             </button>
+            <button
+              onClick={() => navigate('/register')}
+              className="ml-4 text-sm text-gray-600 hover:underline"
+            >
+              Register New Admin
+            </button>
           </div>
+          
         </div>
       </div>
     </div>

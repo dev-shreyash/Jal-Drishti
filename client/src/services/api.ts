@@ -22,10 +22,14 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const isRegisterPage = window.location.pathname === "/register";
+
+    if (error.response?.status === 401 && !isRegisterPage) {
       localStorage.removeItem("token");
-      window.location.href = "/login";
+      localStorage.removeItem("role"); 
+      window.location.href = "/admin/login"; 
     }
+    
     return Promise.reject(error);
   }
 );
