@@ -1,13 +1,25 @@
-const API = "http://localhost:3000/operator-data";
+import api from "./api";
 
-export async function getOperatorPumps(operatorId: number) {
-  const res = await fetch(`${API}/pumps/${operatorId}`);
-  if (!res.ok) throw new Error("Failed to load pumps");
-  return res.json();
+export interface OperatorPump {
+  pump_id: string | number;
+  pump_name: string;
+  status: string;
+  power_hp: number;
 }
 
-export async function getOperatorTanks(operatorId: number) {
-  const res = await fetch(`${API}/tanks/${operatorId}`);
-  if (!res.ok) throw new Error("Failed to load tanks");
-  return res.json();
+export interface OperatorTank {
+  tank_id: string | number;
+  tank_name: string;
+  capacity_liters: number;
+  is_smart_tank: boolean;
+}
+
+export async function getOperatorPumps(operatorId: number): Promise<OperatorPump[]> {
+  const response = await api.get(`/operator-data/pumps/${operatorId}`);
+  return response.data;
+}
+
+export async function getOperatorTanks(operatorId: number): Promise<OperatorTank[]> {
+  const response = await api.get(`/operator-data/tanks/${operatorId}`);
+  return response.data;
 }

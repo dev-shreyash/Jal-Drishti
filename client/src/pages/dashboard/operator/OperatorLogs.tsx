@@ -1,29 +1,40 @@
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import api from "../../../services/api";
+
+interface Log {
+  log_id: string | number;
+  start_time: string;
+  end_time: string;
+  usage_liters: number;
+}
+
+const fetchOperatorLogs = async (): Promise<Log[]> => {
+  const response = await api.get("/operator/daily-logs");
+  return response.data;
+};
 
 export default function OperatorLogs() {
-  const [logs, setLogs] = useState<any[]>([]);
+  const { data: logs = [], isLoading, isError } = useQuery<Log[]>({
+    queryKey: ["operatorDailyLogs"],
+    queryFn: fetchOperatorLogs,
+  });
 
-  useEffect(() => {
-    fetch("http://localhost:3000/operator/daily-logs", {
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-      },
-    })
-      .then((res) => res.json())
-      .then(setLogs);
-  }, []);
+  if (isLoading) return <div className="p-4">Loading logs...</div>;
+  if (isError) return <div className="p-4 text-red-600">Failed to load logs.</div>;
 
   return (
-    <div style={{ padding: 20 }}>
-      <h2>My Daily Logs</h2>
+    <div className="p-4">
+      <h2 className="text-xl font-bold mb-4">My Daily Logs</h2>
 
-      {logs.map((log) => (
-        <div key={log.log_id} style={{ border: "1px solid #ccc", margin: 10, padding: 10 }}>
-          <p><b>Start:</b> {new Date(log.start_time).toLocaleString()}</p>
-          <p><b>End:</b> {new Date(log.end_time).toLocaleString()}</p>
-          <p><b>Usage:</b> {log.usage_liters} L</p>
-        </div>
-      ))}
+      <div className="grid gap-4">
+        {logs.map((log) => (
+          <div key={log.log_id} className="border border-gray-200 rounded-lg p-4 shadow-sm bg-white">
+            <p className="mb-1"><span className="font-semibold text-gray-700">Start:</span> {new Date(log.start_time).toLocaleString()}</p>
+            <p className="mb-1"><span className="font-semibold text-gray-700">End:</span> {new Date(log.end_time).toLocaleString()}</p>
+            <p><span className="font-semibold text-gray-700">Usage:</span> <span className="text-blue-600 font-medium">{log.usage_liters} L</span></p>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

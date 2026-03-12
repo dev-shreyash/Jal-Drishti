@@ -1,6 +1,8 @@
-import { useState, useEffect } from 'react'
-import axios, { AxiosError } from 'axios'
+import { useState } from 'react'
+import { useQuery, useMutation } from '@tanstack/react-query'
+import api from '../services/api'
 import { Database, MapPin, CheckCircle, AlertCircle, Loader2 } from 'lucide-react'
+import type { AxiosError } from 'axios';
 
 interface Pump { 
   pump_id: number; 
@@ -16,69 +18,59 @@ interface Pump {
 interface Village { 
   village_id: number; 
   village_name: string; 
-  taluka: string;      // Added
+  taluka: string;
   district: string; 
-  state: string;       // Added
-  pincode: string;     // Added
+  state: string;
+  pincode: string;
   population?: number | null; 
   pumps: Pump[]; 
 }
 
-interface ApiErrorResponse {
-  error: string;
+interface SimulationResponse {
+  message: string;
 }
 
+interface ApiErrorResponse {
+  message?: string;
+  error?: string;
+}
+
+const fetchAssets = async (): Promise<Village[]> => {
+  const response = await api.get<Village[]>('/simulation/assets');
+  return response.data;
+};
+
+const generateSimulation = async (payload: { pump_id: string; days: number }): Promise<SimulationResponse> => {
+  const response = await api.post<SimulationResponse>('/simulation/generate', payload);
+  return response.data;
+};
+
 export default function DataSimulation() {
-  // State Management
-  const [villages, setVillages] = useState<Village[]>([])
   const [selectedVillageId, setSelectedVillageId] = useState<string>('')
   const [selectedPumpId, setSelectedPumpId] = useState<string>('')
-  
-  const [loading, setLoading] = useState(false)
-  const [status, setStatus] = useState<{ type: 'success' | 'error', msg: string } | null>(null)
 
-  // 1. Fetch Assets on Load
-  useEffect(() => {
-    axios.get('http://localhost:3000/simulation/assets')
-      .then(res => setVillages(res.data))
-      .catch(err => console.error("Failed to load assets", err))
-  }, [])
+  const { data: villages = [], isLoading: isLoadingAssets } = useQuery<Village[]>({
+    queryKey: ['simulationAssets'],
+    queryFn: fetchAssets,
+  });
 
-  // 2. Handle Generation Logic
-  const handleGenerate = async () => {
-    if (!selectedPumpId) return
-    
-    setLoading(true)
-    setStatus(null)
+  const mutation = useMutation({
+    mutationFn: generateSimulation,
+  });
 
-    try {
-      // Calls your new modular Backend Route
-      const res = await axios.post('http://localhost:3000/simulation/generate', {
-        pump_id: selectedPumpId,
-        days: 90 // Generates 3 months of history
-      })
-      
-      setStatus({ type: 'success', msg: res.data.message })
-    } catch (err) {
-      const error = err as AxiosError<ApiErrorResponse>
-      
-      const errorMsg = error.response?.data?.error || "Connection Failed"
-      setStatus({ type: 'error', msg: errorMsg })
-    } finally {
-      setLoading(false)
-    }
-  }
+  const handleGenerate = () => {
+    if (!selectedPumpId) return;
+    mutation.mutate({ pump_id: selectedPumpId, days: 90 });
+  };
 
-  // Find the selected village object to show its pumps
   const activeVillage = villages.find(v => v.village_id.toString() === selectedVillageId)
 
   return (
     <div className="max-w-xl mx-auto mt-10 bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
       
-      {/* Header */}
       <div className="bg-gradient-to-r from-blue-600 to-blue-800 p-6 text-white flex items-center gap-4">
         <div className="p-3 bg-white/20 rounded-full backdrop-blur-sm">
-          <Database size={24} className=" text-gray-500" />
+          <Database size={24} className="text-white" />
         </div>
         <div>
           <h2 className="text-xl font-bold">AI Data Seed</h2>
@@ -88,19 +80,20 @@ export default function DataSimulation() {
 
       <div className="p-6 space-y-5">
         
-        {/* Step 1: Village Selection */}
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-2">Select Target Village</label>
           <div className="relative">
             <select 
-              className="w-full p-3 pl-4 border border-gray-300 rounded-lg appearance-none bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+              className="w-full p-3 pl-4 border border-gray-300 rounded-lg appearance-none bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all disabled:opacity-50"
               value={selectedVillageId}
+              disabled={isLoadingAssets}
               onChange={(e) => { 
                 setSelectedVillageId(e.target.value); 
-                setSelectedPumpId('') // Reset pump on village change
+                setSelectedPumpId('');
+                mutation.reset();
               }}
             >
-              <option value="">-- Choose a Location --</option>
+              <option value="">{isLoadingAssets ? 'Loading assets...' : '-- Choose a Location --'}</option>
               {villages.map(v => (
                 <option key={v.village_id} value={v.village_id}>
                   {v.village_name}, {v.district}
@@ -111,13 +104,15 @@ export default function DataSimulation() {
           </div>
         </div>
 
-        {/* Step 2: Pump Selection (Only appears after Village is selected) */}
         <div className={`transition-all duration-300 ${selectedVillageId ? 'opacity-100' : 'opacity-50 pointer-events-none'}`}>
           <label className="block text-sm font-semibold text-gray-700 mb-2">Select Pump Asset</label>
           <select 
             className="w-full p-3 border border-gray-300 rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500"
             value={selectedPumpId}
-            onChange={(e) => setSelectedPumpId(e.target.value)}
+            onChange={(e) => {
+              setSelectedPumpId(e.target.value);
+              mutation.reset();
+            }}
             disabled={!selectedVillageId}
           >
             <option value="">-- Choose an Asset --</option>
@@ -129,17 +124,16 @@ export default function DataSimulation() {
           </select>
         </div>
 
-        {/* Step 3: Action Button */}
         <button
           onClick={handleGenerate}
-          disabled={!selectedPumpId || loading}
+          disabled={!selectedPumpId || mutation.isPending}
           className={`w-full py-4 rounded-lg font-bold text-lg flex items-center justify-center gap-2 transition-all shadow-md
-            ${!selectedPumpId || loading
+            ${!selectedPumpId || mutation.isPending
               ? 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none' 
-              : 'bg-blue-600 hover:bg-blue-700  text-gray-500 hover:shadow-lg active:scale-95'
+              : 'bg-blue-600 hover:bg-blue-700 text-white hover:shadow-lg active:scale-95'
             }`}
         >
-          {loading ? (
+          {mutation.isPending ? (
             <>
               <Loader2 className="animate-spin" /> Generating Data...
             </>
@@ -150,13 +144,21 @@ export default function DataSimulation() {
           )}
         </button>
 
-        {/* Feedback Message */}
-        {status && (
-          <div className={`p-4 rounded-lg flex items-center gap-3 border ${
-            status.type === 'success' ? 'bg-green-50 text-green-800 border-green-200' : 'bg-red-50 text-red-800 border-red-200'
-          }`}>
-            {status.type === 'success' ? <CheckCircle size={20} /> : <AlertCircle size={20} />}
-            <span className="font-medium">{status.msg}</span>
+        {mutation.isSuccess && (
+          <div className="p-4 rounded-lg flex items-center gap-3 border bg-green-50 text-green-800 border-green-200">
+            <CheckCircle size={20} />
+            <span className="font-medium">{mutation.data?.message || "Simulation generated successfully"}</span>
+          </div>
+        )}
+
+        {mutation.isError && (
+          <div className="p-4 rounded-lg flex items-center gap-3 border bg-red-50 text-red-800 border-red-200">
+            <AlertCircle size={20} />
+            <span className="font-medium">
+              {(mutation.error as AxiosError<ApiErrorResponse>).response?.data?.message || 
+               (mutation.error as AxiosError<ApiErrorResponse>).response?.data?.error || 
+               "Connection Failed"}
+            </span>
           </div>
         )}
 
