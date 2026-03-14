@@ -1,9 +1,0 @@
-{
-  "dependencies": {
-    "hono": "^4.11.3"
-  },
-  "devDependencies": {
-    "oxlint": "^1.54.0",
-    "react-doctor": "^0.0.30"
-  }
-}

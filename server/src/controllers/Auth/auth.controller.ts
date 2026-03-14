@@ -3,7 +3,7 @@ import prisma from "../../db";
 import bcrypt from "bcryptjs";
 import { sign } from "hono/jwt";
 
-const ALLOWED_DOMAIN = "@panchayat.com";
+const ALLOWED_DOMAIN = process.env.ALLOWED_EMAIL_DOMAIN || "@gov.in";
 
 export const adminRegister = async (c: Context) => {
   try {
